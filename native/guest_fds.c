@@ -100,13 +100,18 @@ int sucrune_fds_add_batch(struct sucrune_fd_table *table, enum sucrune_fd_kind k
     for (size_t i = 0U; i < count; i++) if ((flags[i] & ~SUCRUNE_FD_CLOEXEC) != 0U) return -EINVAL;
     if (count > table->limit - table->count || count > table->limit - table->resource_count) return -EMFILE;
     int slots[SUCRUNE_LINUX_FD_LIMIT], resources[SUCRUNE_LINUX_FD_LIMIT], aliases[SUCRUNE_LINUX_FD_LIMIT];
-    size_t slot_count = 0U, resource_count = 0U;
-    for (unsigned int i = 0U; i < table->limit; i++) {
-        if (!live(table, i) && slot_count < count) slots[slot_count++] = (int)i;
-        if (table->resources[i].references == 0U && resource_count < count) resources[resource_count++] = (int)i;
-        if (slot_count == count && resource_count == count) break;
+    unsigned int next_slot = 0U, next_resource = 0U;
+    for (size_t i = 0U; i < count; i++) {
+        int slot = free_descriptor(table, next_slot);
+        if (slot < 0) return slot;
+        while (next_resource < table->limit && table->resources[next_resource].references != 0U)
+            next_resource++;
+        if (next_resource == table->limit) return -EMFILE;
+        slots[i] = slot;
+        resources[i] = (int)next_resource;
+        next_slot = (unsigned int)slot + 1U;
+        next_resource++;
     }
-    if (slot_count != count || resource_count != count) return -EMFILE;
     for (size_t i = 0U; i < count; i++) {
         int error = prepare_alias(table, kind, handles[i], &aliases[i]);
         if (error != 0) {

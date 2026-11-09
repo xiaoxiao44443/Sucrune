@@ -59,7 +59,10 @@ static int range(int file, off_t size, const struct sucrune_record_lock *r, stru
     if (r->whence==SEEK_END) base=size;
     else if (r->whence==SEEK_CUR) {
         base=lseek(file,0,SEEK_CUR);
-        if (base<0) return -errno;
+        if (base < 0) {
+            int error = errno;
+            return error > 0 ? -error : -EIO;
+        }
     } else if (r->whence!=SEEK_SET) return -EINVAL;
     if (__builtin_add_overflow(base,r->start,&start)) return -EOVERFLOW;
     if (start<0) return -EINVAL;

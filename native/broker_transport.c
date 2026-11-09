@@ -25,8 +25,13 @@ static int64_t milliseconds(void) {
 static int deadline(int timeout_ms, int64_t *out) {
     if (timeout_ms < -1) return -EINVAL;
     if (timeout_ms == -1) { *out = -1; return 0; }
-    int64_t now = milliseconds(); if (now < 0) return -errno;
-    *out = now + timeout_ms; return 0;
+    int64_t now = milliseconds();
+    if (now < 0) {
+        int error = errno;
+        return error > 0 ? -error : -EIO;
+    }
+    *out = now + timeout_ms;
+    return 0;
 }
 static int ready(int fd, short events, int64_t end) {
     for (;;) {
