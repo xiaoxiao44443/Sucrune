@@ -1,0 +1,10 @@
+.section .rodata
+.balign 16
+.global sucrune_hello_start
+.hidden sucrune_hello_start
+sucrune_hello_start:
+.incbin "@SUCRUNE_HELLO_ELF@"
+.global sucrune_hello_end
+.hidden sucrune_hello_end
+sucrune_hello_end:
+.section .note.GNU-stack,"",%progbits

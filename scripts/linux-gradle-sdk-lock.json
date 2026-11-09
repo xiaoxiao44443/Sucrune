@@ -1,0 +1,117 @@
+{
+  "schema_version": 1,
+  "native": {
+    "url": "https://github.com/zhuwanhong/android-sdk-linux-arm64/releases/download/v1.0.0/android-sdk-linux-arm64-36.0.0-ours.tar.gz",
+    "filename": "android-sdk-linux-arm64-36.0.0-ours.tar.gz",
+    "bytes": 38047751,
+    "sha256": "f82700229b117aca7720c227bec1e62259071b5e1f0d60e0569244149aee357a",
+    "aosp_tag": "platform-tools-35.0.2"
+  },
+  "sdk": [
+    {
+      "source": "platforms/android-37.0/android.jar",
+      "bytes": 43044472,
+      "sha256": "bf1b4387cc7ca94fc6ef684f040d9d16fbf16248e181819f020736ea2053f177"
+    },
+    {
+      "source": "platforms/android-37.0/source.properties",
+      "bytes": 343,
+      "sha256": "fa89029fc0cee414cb5e44a37cd3033771217eeecb5086577bb6d9b1b03b5b5f"
+    },
+    {
+      "source": "platforms/android-37.0/package.xml",
+      "bytes": 18686,
+      "sha256": "cf8d623db9b8fb3112f2a15c6e1d246a85f300e04742c86f51819b998b77a499"
+    },
+    {
+      "source": "platforms/android-37.0/build.prop",
+      "bytes": 4346,
+      "sha256": "08f3d536c482a1cf7ba1466b9fb4ca2813a1898d3c5fdab6f093223a7e8a1e2b"
+    },
+    {
+      "source": "platforms/android-37.0/sdk.properties",
+      "bytes": 209,
+      "sha256": "c86105280c89b32babbf6ad5c70a98e43489f1dd69bb710179e93262f57daeeb"
+    },
+    {
+      "source": "platforms/android-37.0/framework.aidl",
+      "bytes": 136049,
+      "sha256": "67fe395a71d80321c1488a4c18c920c2283283c116be0bc7234763bd37544345"
+    },
+    {
+      "source": "platforms/android-37.0/core-for-system-modules.jar",
+      "bytes": 1521707,
+      "sha256": "b8f6e4cfad9219fe614f81623534e858eeb3aea3e08eefc47ced42b69bfad035"
+    },
+    {
+      "source": "platforms/android-37.0/data/NOTICE.txt",
+      "bytes": 766391,
+      "sha256": "6f3c947e9827793a4984bd5d0e4a306b76c95a65186fe779feec748fc739c56f"
+    },
+    {
+      "source": "platforms/android-37.0/optional/android.car.jar",
+      "bytes": 92658,
+      "sha256": "3acf3122142f347e2b1eff56d7bb63c670e2f62f8be07e501f0feb50e579837e"
+    },
+    {
+      "source": "platforms/android-37.0/optional/android.test.base.jar",
+      "bytes": 15852,
+      "sha256": "39cba5b2c198aadcbefc450fd0edd3e913162236669043dd634bc3eb196a7c4d"
+    },
+    {
+      "source": "platforms/android-37.0/optional/android.test.mock.jar",
+      "bytes": 16851,
+      "sha256": "10920802c0e21e1c3f5a0ee16cc9c2fde58fdb140c7d07b81a1a361f59f2f4e8"
+    },
+    {
+      "source": "platforms/android-37.0/optional/android.test.runner.jar",
+      "bytes": 25934,
+      "sha256": "9d37c9386454ac3e530a8a8ddce897524b573ff6f19cf30d68fb586984e367d5"
+    },
+    {
+      "source": "platforms/android-37.0/optional/optional.json",
+      "bytes": 588,
+      "sha256": "2844c126cb427f0aa44d9140601619cce31f4b0d9f97284cc92213cb746ca8b9"
+    },
+    {
+      "source": "platforms/android-37.0/optional/org.apache.http.legacy.jar",
+      "bytes": 304658,
+      "sha256": "c7d3773d14d657eaaeb09b59f7278a18a27ec79236ba6b40b34af0aa1671c757"
+    },
+    {
+      "source": "platforms/android-37.0/optional/wear-sdk.jar",
+      "bytes": 55889,
+      "sha256": "5a273f588333b1d08dfa689702bb32a5ee3b17723e0e903b85611e5bd9f347a9"
+    },
+    {
+      "source": "build-tools/36.0.0/package.xml",
+      "bytes": 1433,
+      "sha256": "bb75816b1a74a840a9c226db0845796f1d2739510152a38aa8b7122e285192de"
+    },
+    {
+      "source": "build-tools/36.0.0/source.properties",
+      "bytes": 62,
+      "sha256": "7dee6632e9ad6cb111da2bb99d747211e27927061b1276d040bb1d71fded5ebb"
+    },
+    {
+      "source": "build-tools/36.0.0/core-lambda-stubs.jar",
+      "bytes": 17103,
+      "sha256": "2feb8df434cae3218ed9ffe9bae01ddec101d1dc5e12824c4209f61e283e0d3d"
+    },
+    {
+      "source": "build-tools/36.0.0/lib/d8.jar",
+      "bytes": 17998582,
+      "sha256": "4097ff9c46c185c6e7214da7fe9b1befb5adeea5cc9ca349270e0249904f9240"
+    },
+    {
+      "source": "build-tools/36.0.0/lib/apksigner.jar",
+      "bytes": 1100545,
+      "sha256": "3716d9311e55d2b0918a2fd9d54ba9e406c5f6abeea700b287f11259bc163dec"
+    },
+    {
+      "source": "build-tools/36.0.0/NOTICE.txt",
+      "bytes": 1063288,
+      "sha256": "2df581726e404bf9f5385107b650f6bf7800945348745ea54b7970d98e816b86"
+    }
+  ]
+}

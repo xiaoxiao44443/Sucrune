@@ -1,0 +1,120 @@
+{
+  "version": "0.8.0-agent-dev",
+  "date": "2026-11-07",
+  "device": "Physical Android 15, ARM64, 4 KiB, non-debuggable application with isolated workers",
+  "scope": "Separate runs; counts overlap. The authenticated runs listed here exposed chmod, ftruncate and then short reads while processing complete history. See android15-dsh-agent-acceptance.json for the successful whole-suite run.",
+  "runs": [
+    {
+      "source": "linux-proc-focused-shape.txt",
+      "sha256": "92438927e6cc07ae49f6bc616f35b9043f10225971b6358883f2581ad6e8adf9",
+      "passed": 8,
+      "failed": 0
+    },
+    {
+      "source": "linux-stream-roundtrip-second.txt",
+      "sha256": "a6e019488f9b65c3aed9936f9eed875964a4ba47462f7b5dd3327235b2029231",
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "source": "linux-offline-bash-exact-clean.txt",
+      "sha256": "0b343935f12b312f57c53404476ca7ab035f178e93bd5ed0169cb32408bc4c02",
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "source": "linux-node-dirfd-chmod.txt",
+      "sha256": "567b7468b91f04935084e6dcc4b0507ef940f3dcb369669835259356df6e8932",
+      "passed": 28,
+      "failed": 0
+    },
+    {
+      "source": "linux-offline-original-fs-bash.txt",
+      "sha256": "9d340ce6c38d2298d4a0897e1510e496a5489e4deffd4530cdbce9cbfa7a5267",
+      "passed": 3,
+      "failed": 0
+    },
+    {
+      "source": "original-agent-real-job.jsonl",
+      "sha256": "732e8b13fec7dd28b775faf7bbcfc1987b7480ae1cee43572de77ab6058cd1a4",
+      "passed": 60,
+      "failed": 3,
+      "completed_agent": [
+        "linux_dsh_agent_prepare"
+      ],
+      "first_agent_failure": [
+        {
+          "test": "linux_dsh_agent_model_file_shell",
+          "stage": "tool_result",
+          "safe_reason": "tool_error",
+          "event_count": 14,
+          "tool_count": 1
+        }
+      ]
+    },
+    {
+      "source": "original-agent-real-files.jsonl",
+      "sha256": "cd88d034ef37f33f222c1423d90a0be7f1902e3d12e2288688d7e4d38fa986ae",
+      "passed": 61,
+      "failed": 2,
+      "completed_agent": [
+        "linux_dsh_agent_prepare",
+        "linux_dsh_agent_model_file_shell"
+      ],
+      "first_agent_failure": [
+        {
+          "test": "linux_dsh_agent_restart_resume",
+          "stage": "resume",
+          "safe_reason": "rpc_error",
+          "event_count": 0,
+          "tool_count": 0
+        }
+      ]
+    },
+    {
+      "passed": 3,
+      "sha256": "6bb57ce427bde4e513716d118076cd7273d98253c7bb00593b7b412e722d7fee",
+      "source": "linux-offline-resume-change.txt",
+      "failed": 0
+    },
+    {
+      "passed": 27,
+      "sha256": "416f2345c90d4f8e1b6c7669edec742a0b559f1f1cf5395d1c52d512aa1711dd",
+      "source": "linux-node-ftruncate-debug.txt",
+      "failed": 1
+    },
+    {
+      "passed": 28,
+      "sha256": "b772e05ac6e57398dbe0637c681157dfbc0aecb266506d40e4e08cab4ba7e246",
+      "source": "linux-node-zero-io.txt",
+      "failed": 0
+    },
+    {
+      "failed": 0,
+      "passed": 28,
+      "source": "linux-node-bulk-io.txt",
+      "sha256": "c2b29193ca4b4796007a207cd09f8b5dcb10ea7011c17bb32c769e3246d98816"
+    },
+    {
+      "failed": 0,
+      "passed": 3,
+      "source": "linux-offline-long-history.txt",
+      "sha256": "c381d9e89386785ee766f93360bf5f5d5b0bcea46e9522538ca5763166dff74e"
+    },
+    {
+      "failed": 2,
+      "passed": 61,
+      "source": "original-agent-real-zero.jsonl",
+      "sha256": "6c97afc4d88c8908647e79633a94452f0db689e3fd774c358a51306ae6577145",
+      "first_agent_failure": [
+        {
+          "test": "linux_dsh_agent_restart_resume",
+          "stage": "jsonl",
+          "safe_reason": "assertion",
+          "event_count": 13,
+          "tool_count": 0
+        }
+      ]
+    }
+  ]
+}

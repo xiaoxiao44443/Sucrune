@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "package": {
+    "package": "tcc",
+    "version": "0.9.27+git20200814.62c30a4a-1",
+    "filename": "pool/main/t/tcc/tcc_0.9.27+git20200814.62c30a4a-1_arm64.deb",
+    "size": 198916,
+    "sha256": "12827b480d2976979ee4b69d93f02351ebcc288a22c961d76e84f888e4d4567b"
+  },
+  "ndk_revision": "26.3.11579264",
+  "stub": "sysroot/usr/lib/aarch64-linux-android/29/libandroid.so",
+  "stub_sha256": "2c6036beb20fb7d08dadbbd9316964b3fba100e6f307e067f7e39bf25d61d409",
+  "stub_bytes": 80488
+}

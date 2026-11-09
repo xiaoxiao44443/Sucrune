@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-07",
+  "device": { "model": "PKR110", "api_level": 35, "abi": "arm64-v8a" },
+  "conditions": "Non-debuggable validation APK, foreground instrumentation, ordinary app permissions, Linux Node guest, loopback only.",
+  "target_apk_sha256": "371dbe4671bbf61e45de3121b1ec4aa1818bf5f9ef782934c9f9acbd21d28f28",
+  "test_apk_sha256": "7bf14ebc3f5bd37d9fac9f3952e23455d724c0571254d57ae580a7368ce59f19",
+  "instrumentation": { "probe": "resident", "passed": 1, "failed": 0 },
+  "resident_http": {
+    "request_timeout_ms": 0,
+    "resident": true,
+    "first_status": 200,
+    "second_status": 200,
+    "response_body": "resident-ok",
+    "interval_between_responses_ms": 31009
+  },
+  "concurrent_ordinary_linux_command": {
+    "same_project": true,
+    "build_profile": false,
+    "default_request_timeout_ms": 1800000,
+    "fd_limit": 1024,
+    "fd_peak": 145,
+    "translated_syscalls": 1001373,
+    "exit_code": 0
+  },
+  "short_command": { "explicit_timeout_ms": 2000, "terminal_state": "timed_out", "resident_still_responded": true },
+  "project_delete": {
+    "resident_state": "cancelled",
+    "ordinary_state": "cancelled",
+    "worker_death_output_eof_broker_and_input_cleanup_confirmed": true,
+    "port_rebound": true,
+    "project_absent_from_catalog": true,
+    "other_project_command_still_running": true
+  },
+  "cleanup": "Both test projects deleted. The other project's test command was explicitly cancelled and reaped. Validation and test APKs retained.",
+  "scope": "The ordinary default was read back from the submitted request. The test exercised an explicit two-second timeout and a 31-second HTTP interval. It did not run the service for 30 minutes or exercise Android background suspension."
+}

@@ -1,0 +1,212 @@
+{
+  "schema_version": 1,
+  "checked_at_utc": "2026-11-07 06:31:06 UTC",
+  "device": {
+    "model": "PKR110",
+    "android": "15",
+    "api": 35,
+    "abi": "arm64-v8a",
+    "root_required": false,
+    "mode": "foreground validation APK, isolated workers"
+  },
+  "artifacts": [
+    {
+      "name": "probeapp-validation-androidTest.apk",
+      "bytes": 330458639,
+      "sha256": "45bf04141653f418caad5c5f70df8c5d7a6318c8569fff7e0f5a68ee3691d964",
+      "test_profiles": {
+        "assets/linux-android-build/profile.bin": 59158908,
+        "assets/linux-go-stdlib/profile.bin": 3897133,
+        "assets/linux-go/profile.bin": 32271246,
+        "assets/linux-jdk-zero/profile.bin": 3566748,
+        "assets/linux-jdk/profile.bin": 58346716,
+        "assets/linux-native-activity/profile.bin": 215520,
+        "assets/linux-toolbox/profile.bin": 31263787
+      }
+    },
+    {
+      "name": "probeapp-validation.apk",
+      "bytes": 5502432,
+      "sha256": "609f1a9591d20147195b1baa385f2081515b737cbc96008b5e4785e517524cc5",
+      "test_profiles": {}
+    }
+  ],
+  "suites": {
+    "compilers": {
+      "failed": 2,
+      "passed": 16,
+      "verified_removed_projects": 1,
+      "instrumentation_code": 0,
+      "tests": [
+        {
+          "name": "linux_import_upstream",
+          "passed": true,
+          "detail": "Imported 28 original ELF/library/license files with streamed size/SHA checks"
+        },
+        {
+          "name": "linux_toolbox_import",
+          "passed": true,
+          "detail": "1374 verified distribution files and 98 guest command links installed"
+        },
+        {
+          "name": "linux_compiler_import_go",
+          "passed": true,
+          "detail": "linux-go: 3732 verified distribution files installed"
+        },
+        {
+          "name": "linux_compiler_import_go-stdlib",
+          "passed": true,
+          "detail": "linux-go-stdlib: 35 verified distribution files installed"
+        },
+        {
+          "name": "linux_compiler_import_jdk",
+          "passed": true,
+          "detail": "linux-jdk: 140 verified distribution files installed"
+        },
+        {
+          "name": "linux_compiler_import_android",
+          "passed": true,
+          "detail": "linux-android-build: 55 verified distribution files installed"
+        },
+        {
+          "name": "linux_compiler_import_native-activity",
+          "passed": true,
+          "detail": "linux-native-activity: 4 verified distribution files installed"
+        },
+        {
+          "name": "linux_compiler_blocking_flock",
+          "passed": true,
+          "detail": "A shared lock waited for an independent exclusive owner and resumed after unlock."
+        },
+        {
+          "name": "linux_go_toolchain_version",
+          "passed": true,
+          "detail": "go version go1.26.10 linux/arm64"
+        },
+        {
+          "name": "linux_go_compile_archive",
+          "passed": true,
+          "detail": "Guest compile version go1.26.10 compiled Go source into a 2498-byte package archive"
+        },
+        {
+          "name": "linux_go_compile_link_run",
+          "passed": true,
+          "detail": "Guest compile and link produced an executable printing 'guest-compiled:arm64:1' with precompiled ARM64 standard-library archives"
+        },
+        {
+          "name": "linux_go_build_and_run",
+          "passed": false,
+          "detail": "java.lang.IllegalStateException: /usr/local/go/bin/go build (linux/arm64) exited/1:  go: error obtaining buildID for go tool compile: fork/exec /usr/local/go/pkg/tool/linux_arm64/compile: operation not supported"
+        },
+        {
+          "name": "linux_go_build_android",
+          "passed": false,
+          "detail": "java.lang.IllegalStateException: /usr/local/go/bin/go build (android/arm64) exited/1:  go: error obtaining buildID for go tool compile: fork/exec /usr/local/go/pkg/tool/linux_arm64/compile: operation not supported"
+        },
+        {
+          "name": "jdk_openjdk_version",
+          "passed": true,
+          "detail": "OpenJDK 64-Bit Server VM (build 17.0.21+9-1-deb12u1-Debian, interpreted mode)"
+        },
+        {
+          "name": "jdk_javac_class_and_execute",
+          "passed": true,
+          "detail": "Guest javac emitted a Java 17 class; a second guest JVM executed it and read NativePRNG seed bytes."
+        },
+        {
+          "name": "linux_android_aapt2_resource_apk",
+          "passed": true,
+          "detail": "Debian ARM64 AAPT2 compiled XML, linked framework resources and emitted a no-code APK; aapt verified the package/label and zipalign verified alignment."
+        },
+        {
+          "name": "linux_android_java_signed_apk",
+          "passed": true,
+          "detail": "Guest javac, D8, AAPT2, zipalign and apksigner built an Activity APK; the V2 signer, aligned archive and original DEX bytes were checked."
+        },
+        {
+          "name": "linux_android_native_activity_apk",
+          "passed": true,
+          "detail": "Compiled ARM64 C, linked NativeActivity to the NDK API 29 libandroid.so stub and built a zipaligned unsigned APK. Verified the ELF dependency, entry point, manifest and archived library."
+        }
+      ]
+    },
+    "optional_zero_vm": {
+      "failed": 0,
+      "passed": 6,
+      "verified_removed_projects": 1,
+      "instrumentation_code": -1,
+      "tests": [
+        {
+          "name": "linux_import_upstream",
+          "passed": true,
+          "detail": "Imported 28 original ELF/library/license files with streamed size/SHA checks"
+        },
+        {
+          "name": "linux_toolbox_import",
+          "passed": true,
+          "detail": "1374 verified distribution files and 98 guest command links installed"
+        },
+        {
+          "name": "linux_compiler_import_jdk",
+          "passed": true,
+          "detail": "linux-jdk: 140 verified distribution files installed"
+        },
+        {
+          "name": "linux_compiler_import_jdk-zero",
+          "passed": true,
+          "detail": "linux-jdk-zero: 2 verified distribution files installed"
+        },
+        {
+          "name": "jdk_openjdk_version",
+          "passed": true,
+          "detail": "OpenJDK 64-Bit Zero VM (build 17.0.21+9-1-deb12u1-Debian, interpreted mode)"
+        },
+        {
+          "name": "jdk_javac_class_and_execute",
+          "passed": true,
+          "detail": "Guest javac emitted a Java 17 class; a second guest JVM executed it and read NativePRNG seed bytes."
+        }
+      ]
+    },
+    "linux_process_regression": {
+      "passed": 21,
+      "failed": 0,
+      "instrumentation_code": -1,
+      "cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_guest_fork_vfork_semantics",
+        "linux_guest_fork_continuation_and_wait",
+        "linux_guest_fork_unlinked_file_and_cwd",
+        "linux_guest_fork_stop_continue_wait",
+        "linux_guest_fork_exec_debian_hello",
+        "linux_guest_pselect6_mask_and_readiness",
+        "linux_fork_cancel_session_lease"
+      ],
+      "vfork": "Raw clone(CLONE_VM|CLONE_VFORK|SIGCHLD) returned EOPNOTSUPP before creating a child",
+      "runtime_apk_sha256": "609f1a9591d20147195b1baa385f2081515b737cbc96008b5e4785e517524cc5"
+    }
+  },
+  "additional_checks": [
+    "Android/arm64 native guest-space model 21/21; independent NDK test binary executed by adb shell.",
+    "Workspace broker tests passed on the device shell with one FIFO check skipped because mkfifo was unavailable. The non-privileged Linux host broker run passed with zero skips.",
+    "Windows native host suite 6/6. Android validation build with lint succeeded."
+  ],
+  "scope": {
+    "go": "Go 1.26.10 guest compiler and internal linker compiled the main package, linked an executable and ran it, using 34 matching host-precompiled Linux ARM64 standard-library archives. Both unmodified go build invocations failed before launching the compiler.",
+    "android": "Java SDK build tools were invoked directly. DEX compilation, resource linking, APK V2 signing and verification ran in the guest. Resource-only and NativeActivity APKs were separately checked. Gradle/AGP, Kotlin, cgo, APK installation and launching the resulting apps were outside this run.",
+    "cleanup": "Instrumentation deleted its disposable projects, including generated APKs and temporary signing keys. Both validation packages remain installed."
+  }
+}

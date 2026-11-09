@@ -1,0 +1,10 @@
+.section .rodata.sucrune_lua,"a",%progbits
+.balign 16
+.global sucrune_lua_start
+.hidden sucrune_lua_start
+sucrune_lua_start:
+.incbin "@SUCRUNE_LUA_ELF@"
+.global sucrune_lua_end
+.hidden sucrune_lua_end
+sucrune_lua_end:
+.section .note.GNU-stack,"",%progbits

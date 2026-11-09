@@ -1,0 +1,62 @@
+{
+  "index": "https://deb.debian.org/debian/dists/bookworm/main/binary-arm64/Packages.xz",
+  "index_sha256": "2ddb1737692e8c45c53e8d57c0ce4cd21c78c5703b830c3226b1423566a06c00",
+  "packages": [
+    {
+      "package": "base-files",
+      "version": "12.4+deb12u15",
+      "architecture": "arm64",
+      "filename": "pool/main/b/base-files/base-files_12.4+deb12u15_arm64.deb",
+      "size": 70936,
+      "sha256": "b1272fbdc197f7d5bd22c05b741a03840f8bec66ca68c8d797f567ff2c99d42d"
+    },
+    {
+      "package": "busybox-static",
+      "version": "1:1.35.0-4+deb12u1+b1",
+      "architecture": "arm64",
+      "filename": "pool/main/b/busybox/busybox-static_1.35.0-4+deb12u1+b1_arm64.deb",
+      "size": 822236,
+      "sha256": "732c9135564fc71337e0e05fb4da4d11e6c28c1834bce3e405e575afef2a52f5"
+    },
+    {
+      "package": "jq",
+      "version": "1.6-2.1+deb12u2",
+      "architecture": "arm64",
+      "filename": "pool/main/j/jq/jq_1.6-2.1+deb12u2_arm64.deb",
+      "size": 63560,
+      "sha256": "c232e9407e0f47006dd6077804c1274fd2e4f8be02efc78822db748ed65bea99"
+    },
+    {
+      "package": "libjq1",
+      "version": "1.6-2.1+deb12u2",
+      "architecture": "arm64",
+      "filename": "pool/main/j/jq/libjq1_1.6-2.1+deb12u2_arm64.deb",
+      "size": 121540,
+      "sha256": "2f5b9f70fd6d954123c3c8d0a1b306fe3703dc88c6362ccbe28713e55e7a730b"
+    },
+    {
+      "package": "libonig5",
+      "version": "6.9.8-1",
+      "architecture": "arm64",
+      "filename": "pool/main/libo/libonig/libonig5_6.9.8-1_arm64.deb",
+      "size": 179104,
+      "sha256": "4693ac0f4fc8f2b8b4a7854463a8061a5b0fe7a7c2eb46b9cc21bc4c3adaf1ee"
+    },
+    {
+      "package": "libpcre2-8-0",
+      "version": "10.42-1",
+      "architecture": "arm64",
+      "filename": "pool/main/p/pcre2/libpcre2-8-0_10.42-1_arm64.deb",
+      "size": 230728,
+      "sha256": "b2448d0a8a3db7fbeac231e7ef93811346c1fb5f96ccf6f631701d8a4eb39206"
+    },
+    {
+      "package": "ripgrep",
+      "version": "13.0.0-4+b2",
+      "architecture": "arm64",
+      "filename": "pool/main/r/rust-ripgrep/ripgrep_13.0.0-4+b2_arm64.deb",
+      "size": 1079140,
+      "sha256": "82bd2ff67cedf892c1906d7ecd2831605ec1f8ad74825f576f5519a9c82a02a3"
+    }
+  ]
+}

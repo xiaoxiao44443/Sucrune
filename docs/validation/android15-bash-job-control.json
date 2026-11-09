@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "probe": "linux",
+  "profile": "focus=shell node=true bash=true node_pty=3 expect_debuggable=false",
+  "platform": "Android 15 / ARM64",
+  "execution": "Previously installed non-debuggable application, isolated worker and Linux guest",
+  "expected": 7,
+  "passed": 7,
+  "failed": 0,
+  "instrumentation_code": -1,
+  "raw_sha256": "cf6f2b9833438fa43054321851f12c6333edb63c2af24865eec026ff89a1ffe4",
+  "case": "linux_node_pty_job_control",
+  "assertions": [
+    "Original interactive GNU Bash had monitor mode enabled.",
+    "Real parent and child had different PIDs in the same session. While reading a line from the PTY, the child process group and the kernel foreground group both matched its PID.",
+    "Original /usr/bin/stty size read the configured terminal size: 31 rows, 93 columns.",
+    "After stty exited, /proc/self/stat in the parent showed the shell as session leader and foreground process group leader.",
+    "A subsequent command returned 42 and the shell exited with the specified status 7."
+  ],
+  "other_passes": [
+    "Verified Linux imports",
+    "GNU Bash builtins",
+    "Original Node PTY addon load",
+    "PTY bidirectional terminal I/O and resize",
+    "Interactive Bash two-round dialogue",
+    "GNU stty echo suppression and restoration"
+  ],
+  "not_exercised": [
+    "Arbitrary multi-stage shell pipelines",
+    "Terminal-generated keyboard stop/resume",
+    "Disallowed foreign PGID and reaping races under load",
+    "Authenticated DSH workflows"
+  ],
+  "cleanup": "The instrumentation managed its own projects; this run did not push files, install APKs, or clear application data.",
+  "project_source_hashes_observed_after_run": {
+    "native/guest_processes.c": "0493b9d6643b7f5375fc61450aa1883331d55679bcbe2bd0d6cb12560427e06f",
+    "native/guest_processes.h": "712f7246c1407daea3a62392d12dff3d3bc64803e3dbf72c287036fa35f959e2",
+    "native/guest_fork_child.c": "23f5f9042fc3ad0ba1190a96646f595aaf5e2654587d7d1ad0325bce33b351fa",
+    "native/guest_fork_child.h": "f9dc783c85475d05f2334c8c634b446f6d1a344eb8cd5b7588d56aa08ff67f39",
+    "native/pty_session.c": "04835ad508d02d1f60d52888d94537fde4d177f0d10c3fe363bc5f7f8c94e7c7",
+    "native/pty_session.h": "76a9a5223bbb6f0b038e9328d661ac7697cb681e7f9402b1c52af145735d6add",
+    "native/shell_runtime.c": "cc06c18a2e1725b8a6449ad0cd7680259fe17aa4c53eda09635d85c88973d4e6",
+    "android/probeapp/src/androidTest/kotlin/com/sucrune/probe/tests/NodePtyJobControl.kt": "f1c4103b16e4026109c37ce40b2f59ae3faf5db90c455fb7871408aaa669d196"
+  }
+}

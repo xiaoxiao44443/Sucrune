@@ -1,0 +1,29 @@
+# Build products and tool caches
+.gradle/
+.kotlin/
+.build/
+.cxx/
+build/
+.toolchains/
+__pycache__/
+*.pyc
+*.apk
+*.aab
+
+# Local IDE settings, runtime data and credentials
+.idea/
+*.iml
+local.properties
+.runtime-data/
+.env
+.env.*
+!.env.example
+key.properties
+*.keystore
+*.jks
+
+# Recreated by scripts/prepare-linux-* for Android instrumentation
+/android/probeapp/src/androidTest/assets/linux-rootfs/
+/android/probeapp/src/androidTest/assets/linux-bash/
+/android/probeapp/src/androidTest/assets/linux-node-pty/
+/android/probeapp/src/androidTest/assets/linux-stty/

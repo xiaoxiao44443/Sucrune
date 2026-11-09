@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-07",
+  "role": "Preparation evidence and proposed Android assertions, not a DSH execution success record",
+  "package": "@deepseek-ai/dsh@0.2.2-rc.1",
+  "primary_sources": [
+    "https://registry.npmjs.org/@deepseek-ai/dsh/0.2.2-rc.1",
+    "https://github.com/deepseek-ai/deepseek-harness/tree/fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159",
+    "https://registry.npmjs.org/node-addon-require-builtin/0.1.9",
+    "https://registry.npmjs.org/node-addon-native-custom-loader/0.1.9",
+    "https://registry.npmjs.org/node-pty/1.2.0-beta.15",
+    "https://registry.npmjs.org/koffi/3.1.1"
+  ],
+  "preparation": {
+    "lock_entries_including_other_platforms": 725,
+    "selected_linux_arm64_glibc_packages": 654,
+    "cli_smoke_packages": 28,
+    "cli_smoke_files": 890,
+    "cli_smoke_unique_blobs": 840,
+    "cli_smoke_file_bytes": 5002552,
+    "excluded_smoke_packages": 626,
+    "provenance_file": "docs/dsh-rootfs-provenance.json",
+    "script": "scripts/prepare-dsh-rootfs.ps1",
+    "smoke_output": ".build/dsh-rootfs-smoke",
+    "archive_cache": ".build/dsh-tarballs",
+    "regenerate_smoke": "pwsh -File scripts/prepare-dsh-rootfs.ps1 -Profile CliSmoke -Offline -OutputDirectory <new-empty-output>",
+    "regenerate_full_index": "pwsh -File scripts/prepare-dsh-rootfs.ps1 -Profile Full -ManifestOnly -Offline -OutputDirectory <new-empty-index>",
+    "regenerate_full_assets": "pwsh -File scripts/prepare-dsh-rootfs.ps1 -Profile Full -Offline -OutputDirectory <new-empty-output>",
+    "tool_requirements": [
+      "PowerShell 7.4 or newer",
+      "Windows bsdtar",
+      "SHA512-pinned official tarball cache"
+    ],
+    "package_lifecycle_scripts_executed": false,
+    "host_dsh_executed": false,
+    "android_dsh_executed_by_preparer": false,
+    "credential_sources_read": false,
+    "model_requests": 0,
+    "bin_shims_generated": false,
+    "tar_metadata_note": "Old buffer-equal-constant-time GNU/PAX UID/GID headers trigger .NET TarReader arithmetic overflow. bsdtar copies archives into temporary PAX with UID/GID zero. No archive is filesystem-extracted by bsdtar; file bytes, paths and modes are retained. Original cached archives are never modified and remain checked against npm SHA512 SRI. Only regular file payloads become assets.",
+    "full_tar_files": 69451,
+    "full_tar_file_bytes": 751079454,
+    "full_index_output": ".build/dsh-rootfs-full-index",
+    "smoke_reproducibility": "All 890 path, SHA256, bytes and mode rows matched after tar header normalization.",
+    "negative_checks": [
+      "Tampered tar cache SHA512 rejected",
+      "Existing nonempty asset output rejected"
+    ]
+  },
+  "cli_acceptance": {
+    "node": "/usr/bin/node",
+    "entry": "/opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js",
+    "memory_policy": "linux-jit",
+    "version_args": [
+      "--version"
+    ],
+    "expected_version_stdout": "0.2.2-rc.1\n",
+    "expected_exit_code": 0,
+    "help_args": [
+      "--help"
+    ],
+    "help_markers": [
+      "Usage: dsh [--profile] <name>",
+      "Options:",
+      "--profile <name>",
+      "-V, --version",
+      "dsh plugin --profile <name> <pnpm-args...>"
+    ],
+    "home_behavior": "The published bin parses version/help and exits before invoking loadLayeredEnv, resolveDshHome or profile boot. Version reads dsh-app-boot/package.json. Explicit isolated HOME and DSH_HOME should still be supplied. This is not evidence for normal profile startup.",
+    "missing_file_policy": "A missing module or file in these fixtures is a preparation defect to fix, not evidence that Sucrune is incompatible."
+  },
+  "native_acceptance": {
+    "package": "node-addon-require-builtin@0.1.9",
+    "platform_package": "node-addon-require-builtin-linux-arm64-gnu@0.1.9",
+    "binary": "/opt/dsh/node_modules/node-addon-require-builtin-linux-arm64-gnu/prebuilt/linux-arm64-gnu-napi-v9.node",
+    "sha256": "d5637c73de2af4ce4d0ddd783444d0acc741c1a43ceede3ce7cba7bdda9b5b62",
+    "elf": "ELF64 AArch64 ET_DYN, N-API 9",
+    "needed": [
+      "libdl.so.2",
+      "libstdc++.so.6",
+      "libm.so.6",
+      "libgcc_s.so.1",
+      "libpthread.so.0",
+      "libc.so.6"
+    ],
+    "observed_highest_symbol_versions": [
+      "GLIBC_2.17",
+      "GLIBCXX_3.4.21"
+    ],
+    "environment": "NARB_NATIVE_CACHE_DIR=/workspace/dsh-native-cache",
+    "loader_behavior": "createEntryApi immediately loads the native binding. requireBuiltin forwards to binding.requireBuiltin and getBindingInfo calls binding.getNativeBindingInfo. The default native cache uses os.tmpdir unless NARB_NATIVE_CACHE_DIR is set. libc classification first reads process.execPath ELF PT_INTERP, then /proc/self/maps, then process.report as a fallback. process.execPath must represent the guest Node executable.",
+    "javascript": "const a=require('/opt/dsh/node_modules/node-addon-require-builtin');const i=a.getBindingInfo();const p=a.requireBuiltin('path');if(i.backend!=='napi'||i.bindingSource!=='optional-package'||i.platformPackageSuffix!=='linux-arm64-gnu'||i.optionalPackageName!=='node-addon-require-builtin-linux-arm64-gnu'||p.posix.join('/sucrune','native')!=='/sucrune/native'||!a.isAllowedInternalId('internal/modules/cjs/loader'))throw Error('native mismatch '+JSON.stringify(i));console.log('DSH_NATIVE_OK '+JSON.stringify(i));"
+  },
+  "full_profile_native_inputs": [
+    {
+      "package": "@deepseek-ai/node-addon-system-linux-arm64@0.1.2",
+      "binary": "bin/glibc/system.node",
+      "needed": [
+        "libc.so.6",
+        "ld-linux-aarch64.so.1"
+      ],
+      "observed_glibc": "2.17",
+      "additional": "bin/landlock-run is a separately shipped static helper; no Landlock availability is claimed."
+    },
+    {
+      "package": "node-pty@1.2.0-beta.15",
+      "binary": "prebuilds/linux-arm64/pty.node",
+      "needed": [
+        "libutil.so.1",
+        "libstdc++.so.6",
+        "libgcc_s.so.1",
+        "libpthread.so.0",
+        "libc.so.6",
+        "ld-linux-aarch64.so.1"
+      ],
+      "observed_glibc": "2.28",
+      "observed_glibcxx": "3.4.22",
+      "additional": "Linux forkpty path does not use the macOS-only spawn-helper binary. libutil.so.1 must be supplied for full PTY verification."
+    },
+    {
+      "package": "@koromix/koffi-linux-arm64@3.1.1",
+      "binary": "linux_arm64/koffi.node",
+      "needed": [
+        "libstdc++.so.6",
+        "libm.so.6",
+        "libgcc_s.so.1",
+        "libc.so.6"
+      ],
+      "observed_glibc": "2.17",
+      "observed_glibcxx": "3.4.22"
+    },
+    {
+      "package": "@img/sharp-linux-arm64@0.35.5",
+      "binary": "lib/sharp-linux-arm64-0.35.5.node",
+      "additional": "Depends on libvips-cpp.so.8.18.7 from @img/sharp-libvips-linux-arm64@1.3.4; upstream RPATH references the sibling platform package."
+    },
+    {
+      "package": "sherpa-onnx-linux-arm64",
+      "binary": "sherpa-onnx.node",
+      "additional": "Depends on bundled libsherpa-onnx-c-api.so and libonnxruntime.so using $ORIGIN RPATH, plus system C/C++ libraries. Exact package version and all bytes are pinned in the main provenance."
+    },
+    {
+      "package": "@vscode/ripgrep-linux-arm64@1.18.0",
+      "binary": "bin/rg",
+      "additional": "Official platform package includes the executable; no postinstall download is required."
+    }
+  ],
+  "limits": [
+    "CLI smoke preserves complete packages in its closure but deliberately excludes profiles and their 626 other packages.",
+    "A Full manifest with assets_materialized=false is a recovery index and must not be used as an importable asset directory.",
+    "Installing packages with npm inside the phone, profile startup, PTY/processes, Web/HTTP, SQLite/flock, model access and DSH tasks require separate real guest validation.",
+    "No upstream JavaScript or native binaries were patched."
+  ]
+}

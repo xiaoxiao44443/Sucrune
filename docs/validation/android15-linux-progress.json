@@ -1,0 +1,1762 @@
+{
+  "schema": 1,
+  "date": "2026-11-07",
+  "status": "development_in_progress",
+  "android_api": 35,
+  "rooted": false,
+  "validation_app_debuggable": false,
+  "observations": [
+    "Official unmodified GNU/Linux ARM64 Node 24.22.2 executes real JavaScript in a non-debuggable Android 15 isolated app/native runner: explicit linux-jit enables anonymous JIT mappings; --jitless passes with default W^X.",
+    "Node fs sync/async, access/readlink/fchmod and project artifacts, Unicode ESM/argv, timers/promises, OpenSSL crypto, worker shared Atomics, and real V8 TurboFan optimization passed. Two project Node processes overlapped with distinct isolated UIDs/PIDs and independent same-path files.",
+    "Real guest signal delivery/rt_sigreturn, 64 pthread creations/joins, exit_group with syscall-free threads, local pipe/eventfd/epoll, timeout/cancel and all four cleanup barriers passed.",
+    "Official @deepseek-ai/dsh@0.2.2-rc.1 CLI --version/--help and the unchanged Linux ARM64 glibc require-builtin N-API addon passed; the addon actually invoked a Node builtin.",
+    "The final explicitly foregrounded Linux/Node/DSH suite linux-dsh-interactive-final.txt passed 36/36. Original sdk-minimal finite EOF boot and real sequential initialize/shutdown passed without weakening required-plugin activation checks. Earlier 31/31, 30/36 and 34/36 runs remain in history.",
+    "Directory support now passes Node sync/async scans and streaming opendir over 181 entries, including UTF-8, empty directories and ENOENT/ENOTDIR. Guest-requested O_NONBLOCK is distinct from the broker's internal nonblocking safeguard.",
+    "The final unchanged APK passed four foreground app suites, 69/69: Linux/Node/DSH 36, bundled I/O 12, exec 11 and tools/Lua 10. The earlier seven-group 58/58 baseline is retained separately and is not presented as fully rerun on this final build.",
+    "The earlier 27-case CLI run was intentionally interrupted during case 24 import after 23 passing cases; it is not a completed suite or a DSH compatibility failure. Operator-reported cleanup removed only its two orphan environments and one staging file; execution history was preserved.",
+    "Earlier hello version expectation was corrected only after verifying the pinned official Debian ELF contains an empty VERSION string.",
+    "Network capability probe integrity passed 5/5: isolated service direct TCP socket creation is denied, while manager-provided descriptors support some localhost operations. This does not establish translated Linux guest networking, DNS, UDP, external access, Web or project network isolation.",
+    "The outdated O_NONBLOCK rejection assertion remains recorded as an 11/12 failed I/O run. Its revised real dup-shared set/clear and unsupported O_ASYNC checks passed in the final 12/12 rerun.",
+    "Final interactive Node tests passed copied-input roundtrip, cumulative overflow rejection, explicit EOF, empty-queue cancellation/deadline, guest-close detection, all four cleanup barriers and project reuse. The preceding 34/36 run's shutdown-boundary expectation failures remain unchanged in history; synchronous cancellation publication and corrected terminal-output boundaries were rerun successfully.",
+    "During the earlier linux-dsh-interactive.txt installer wait, foregrounding this app correlated with manager/watchdog progress resuming. Standard dumpsys did not report frozen/cached and the device was awake. Background execution reliability and the precise cause remain unverified.",
+    "Official SDK handshake device validation passed with 206 input bytes and zero notifications: initialize returned deepseek-harness-sdk-runtime/0.0.1 while stdin stayed open, then shutdown returned {}, exit zero and full cleanup. No model/tool or external-network request was sent.",
+    "Final diagnostics reported no remaining environments or import staging files and required no removals. This cleanup observation is not counted as a seventieth functional test; parent also reported both validation apps retained and no application/runner processes left."
+  ],
+  "runs": [
+    {
+      "name": "linux-first.txt",
+      "sha256": "1F3FA45EB1E52C55E4ECA8AE30705C76B13CABE4996567DABCA182853F36F920",
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=7",
+        "INSTRUMENTATION_RESULT: failed=4",
+        "INSTRUMENTATION_RESULT: passed=3"
+      ],
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_last_instruction_trap",
+        "linux_project_boundary"
+      ],
+      "failed_cases": [
+        "linux_dynamic_hello",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions"
+      ]
+    },
+    {
+      "name": "linux-stat-fix.txt",
+      "sha256": "4146AC9DD15F0BC91354F25B110B8A63C94D67507F3026C42FDD28D23C8C4CAB",
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=7",
+        "INSTRUMENTATION_RESULT: failed=1",
+        "INSTRUMENTATION_RESULT: passed=6"
+      ],
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary"
+      ],
+      "failed_cases": [
+        "linux_argv_and_reuse"
+      ]
+    },
+    {
+      "name": "import-node-first.txt",
+      "sha256": "F0BF17E17FE58DA2707A0EAA5C5444879F678D654CCBA7407CEE79772F2FA8F1",
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=7",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=7"
+      ],
+      "passed_cases": [
+        "import_large_stream",
+        "import_executable_modes",
+        "import_stream_failures_preserve_artifact",
+        "import_core_rechecks_integrity",
+        "import_active_rejection_and_reuse",
+        "import_staging_symlink_rejected",
+        "import_destination_symlinks_rejected"
+      ],
+      "failed_cases": []
+    },
+    {
+      "name": "linux-node-first.txt",
+      "sha256": "40194B09CD93BE87C9723D87E1F27ED7A3B3908C0344C3AF32923E1A1EB6D4E0",
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=9",
+        "INSTRUMENTATION_RESULT: failed=5",
+        "INSTRUMENTATION_RESULT: passed=4"
+      ],
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_project_boundary"
+      ],
+      "failed_cases": [
+        "linux_dynamic_hello",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_node_version",
+        "linux_node_javascript"
+      ]
+    },
+    {
+      "name": "linux-utf8-futex.txt",
+      "sha256": "25BB3161046C0921457157852C13C707EA67289259367BE5F164336333E3E5FB",
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=7",
+        "INSTRUMENTATION_RESULT: failed=1",
+        "INSTRUMENTATION_RESULT: passed=6"
+      ],
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary"
+      ],
+      "failed_cases": [
+        "linux_argv_and_reuse"
+      ]
+    },
+    {
+      "name": "linux-runner-first.txt",
+      "sha256": "13A8D64F171E49C300FCAC6115624BCFDF3C9263D7606FF0C11D4EF519544696",
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=9",
+        "INSTRUMENTATION_RESULT: failed=3",
+        "INSTRUMENTATION_RESULT: passed=6"
+      ],
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary"
+      ],
+      "failed_cases": [
+        "linux_argv_and_reuse",
+        "linux_node_version",
+        "linux_node_javascript"
+      ]
+    },
+    {
+      "name": "linux-runner-time.txt",
+      "sha256": "1D9E569E90E6E9C9707EE4C709854A2963C824A712B3B36C73968BE25F48AE4C",
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=9",
+        "INSTRUMENTATION_RESULT: failed=3",
+        "INSTRUMENTATION_RESULT: passed=6"
+      ],
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary"
+      ],
+      "failed_cases": [
+        "linux_argv_and_reuse",
+        "linux_node_version",
+        "linux_node_javascript"
+      ]
+    },
+    {
+      "name": "linux-runner-sigaction.txt",
+      "sha256": "D833972DB44A6E3A79F45EF24DAB99E63C35138B8188BEA25613A92677EB29F9",
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=9",
+        "INSTRUMENTATION_RESULT: failed=3",
+        "INSTRUMENTATION_RESULT: passed=6"
+      ],
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary"
+      ],
+      "failed_cases": [
+        "linux_argv_and_reuse",
+        "linux_node_version",
+        "linux_node_javascript"
+      ]
+    },
+    {
+      "name": "linux-runner-lifecycle.txt",
+      "sha256": "A5C7180E4CBE9C99F3B2180FA3C2B43BDAB5C63B8435D6BAB3ED6EAB985AA722",
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=10",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=10"
+      ],
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read"
+      ],
+      "failed_cases": []
+    },
+    {
+      "name": "linux-signals-first.txt",
+      "sha256": "C1710FBC551CDB04F94A70945FBED00439B310B5E0DC2492D7E8E8B020133205",
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=13",
+        "INSTRUMENTATION_RESULT: failed=1",
+        "INSTRUMENTATION_RESULT: passed=12"
+      ],
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_node_version"
+      ],
+      "failed_cases": [
+        "linux_node_javascript"
+      ]
+    },
+    {
+      "name": "linux-local-io-first.txt",
+      "sha256": "400EC555259105F5E1ED51C78FA8A0DEF4CADD707B1172B4E969118C8FB8393F",
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=13",
+        "INSTRUMENTATION_RESULT: failed=1",
+        "INSTRUMENTATION_RESULT: passed=12"
+      ],
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_node_version"
+      ],
+      "failed_cases": [
+        "linux_node_javascript"
+      ]
+    },
+    {
+      "name": "linux-threads-first.txt",
+      "sha256": "A1F7B69B153463A5BCD03A5A274E566086E32433445BB3D2633D09B1ED66BE48",
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=15",
+        "INSTRUMENTATION_RESULT: failed=1",
+        "INSTRUMENTATION_RESULT: passed=14"
+      ],
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_node_version"
+      ],
+      "failed_cases": [
+        "linux_node_javascript"
+      ]
+    },
+    {
+      "name": "regression-io.txt",
+      "sha256": "7739D01C739ADD851F8FAF734384DF5ACA8FC70A9A908C2AF386179DE5DD399E",
+      "bytes": 11786,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=12",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=12"
+      ],
+      "expected_tests": 12,
+      "passed_cases": [
+        "io_shell_lua_file_streams",
+        "io_builtin_restore_append",
+        "io_redirection_errors_and_order",
+        "io_nested_exec_redirection",
+        "io_shared_offsets_flags",
+        "io_errors_capacity_recovery",
+        "io_aliases_across_exec",
+        "io_standard_stream_aliases",
+        "io_last_stdin_alias_close",
+        "io_exec_closes_saved_input",
+        "io_repeated_redirect_no_leak",
+        "io_parallel_project_streams"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "classification": "completed_regression_pass"
+    },
+    {
+      "name": "regression-exec.txt",
+      "sha256": "88698FB3B900D3150EDCC4CA96271705B332FDF1FF9C5EEFA9E0544BD72548D5",
+      "bytes": 10724,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=11",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=11"
+      ],
+      "expected_tests": 11,
+      "passed_cases": [
+        "exec_shell_lua_artifacts",
+        "exec_failure_and_redirection",
+        "exec_static_shell_static_chain",
+        "exec_nested_shell_replacement",
+        "exec_native_state_preserved",
+        "exec_invalid_requests_preserve_image",
+        "exec_standard_stream_cloexec",
+        "exec_chain_limit",
+        "exec_deadline_and_reuse",
+        "exec_cancel_and_reuse",
+        "exec_parallel_projects"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "classification": "completed_regression_pass"
+    },
+    {
+      "name": "regression-tools.txt",
+      "sha256": "BBFC6DDD4198E1A240344C814A6ABB88570E23DCD42EDB49881C1A906713207B",
+      "bytes": 9887,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=10",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=10"
+      ],
+      "expected_tests": 10,
+      "passed_cases": [
+        "tool_catalog_and_input_limits",
+        "lua_language_arguments_environment",
+        "lua_script_modules_project_files",
+        "lua_stdin_script_and_eof",
+        "lua_binary_stdin_backpressure",
+        "tool_ignored_and_closed_stdin",
+        "lua_timeout_full_stdin_and_reuse",
+        "lua_errors_and_unsupported_operations",
+        "lua_cpu_clock_and_calendar",
+        "lua_parallel_projects"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "classification": "completed_regression_pass"
+    },
+    {
+      "name": "regression-program.txt",
+      "sha256": "F07F4E4DFD41E42087B9127541FB63AF59C644364ACCBEDEDF805853FE16E235",
+      "bytes": 6728,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=7",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=7"
+      ],
+      "expected_tests": 7,
+      "passed_cases": [
+        "musl_tls_memory_files_utf8",
+        "program_cwd_and_shell_reuse",
+        "parallel_program_workers",
+        "program_timeout_and_reuse",
+        "program_cancel_and_reuse",
+        "program_fault_cleanup",
+        "program_request_boundaries"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "classification": "completed_regression_pass"
+    },
+    {
+      "name": "regression-runtime.txt",
+      "sha256": "F73E858586ACC0270E4A7EF453865E8ABF545ED72269321D1BEB6CEF363BD6B4",
+      "bytes": 9069,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=10",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=10"
+      ],
+      "expected_tests": 10,
+      "passed_cases": [
+        "parallel_project_isolation",
+        "file_api_unicode_persistence",
+        "script_file_and_reuse",
+        "quotes_redirection_cwd",
+        "unsupported_is_explicit",
+        "timeout_and_reuse",
+        "cancel_and_reuse",
+        "event_cursor_and_no_subscriber",
+        "bounded_output_drains",
+        "workspace_boundaries_and_busy"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "classification": "completed_regression_pass"
+    },
+    {
+      "name": "regression-seccomp_sigsys_return.txt",
+      "sha256": "E28A8D1CE62380BE0496E0259F54CA25EE813C8F1739BA2F375AC92C09E7E450",
+      "bytes": 7772,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=4",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=4"
+      ],
+      "expected_tests": 4,
+      "passed_cases": [
+        "application_1",
+        "application_2",
+        "isolated_service_1",
+        "isolated_service_2"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "classification": "completed_regression_pass"
+    },
+    {
+      "name": "regression-arm64_elf.txt",
+      "sha256": "E098A12F140E6FED13BB07BAF659805EC64D9BFBCF131A2AACA068FAFF5428E1",
+      "bytes": 7884,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=4",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=4"
+      ],
+      "expected_tests": 4,
+      "passed_cases": [
+        "arm64_elf_application_1",
+        "arm64_elf_application_2",
+        "arm64_elf_isolated_service_1",
+        "arm64_elf_isolated_service_2"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "classification": "completed_regression_pass"
+    },
+    {
+      "name": "linux-jit-first.txt",
+      "sha256": "617445C846ADE9FD48F6C35F893B3DB32B3FB762C45C5C6576D642617FC24C6E",
+      "bytes": 29472,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=17",
+        "INSTRUMENTATION_RESULT: failed=2",
+        "INSTRUMENTATION_RESULT: passed=15"
+      ],
+      "expected_tests": 17,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version"
+      ],
+      "failed_cases": [
+        "linux_node_javascript",
+        "linux_node_jitless"
+      ],
+      "started_without_terminal": [],
+      "classification": "historical_runtime_failures",
+      "summary": "15/17. Explicit linux-jit policy reached Node stdio; default and jitless JS cases failed ENOTTY. This precedes the ioctl fix.",
+      "resolved_by": "linux-node-ioctl.txt"
+    },
+    {
+      "name": "linux-node-stdio.txt",
+      "sha256": "2A042829645A33A6FBE7C73F9CA48995B50748BEB257F8F335BE1BB3029ED5FD",
+      "bytes": 29472,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=17",
+        "INSTRUMENTATION_RESULT: failed=2",
+        "INSTRUMENTATION_RESULT: passed=15"
+      ],
+      "expected_tests": 17,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version"
+      ],
+      "failed_cases": [
+        "linux_node_javascript",
+        "linux_node_jitless"
+      ],
+      "started_without_terminal": [],
+      "classification": "historical_runtime_failures",
+      "summary": "15/17. Node stdout initialization still failed ENOTTY; not a JavaScript pass for this run.",
+      "resolved_by": "linux-node-ioctl.txt"
+    },
+    {
+      "name": "linux-node-ioctl.txt",
+      "sha256": "59CA560975AAF68A8FB5109D2197ABF59E24AEC53786654DE6D11DF5857A4C08",
+      "bytes": 18559,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=17",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=17"
+      ],
+      "expected_tests": 17,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "classification": "completed_pass",
+      "summary": "17/17. Real Node JavaScript passed with explicit linux-jit; --jitless passed with default W^X."
+    },
+    {
+      "name": "linux-node-workflows.txt",
+      "sha256": "150359FB13F42A0D2C4CEA01DDB6676FC6FFE4ADD17AF98F5A27BCDF280F55D9",
+      "bytes": 34902,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=23",
+        "INSTRUMENTATION_RESULT: failed=2",
+        "INSTRUMENTATION_RESULT: passed=21"
+      ],
+      "expected_tests": 23,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_jit_optimization"
+      ],
+      "failed_cases": [
+        "linux_node_fs_workflow",
+        "linux_node_worker_shared_atomics"
+      ],
+      "started_without_terminal": [],
+      "classification": "historical_runtime_failures",
+      "summary": "21/23. fs workflow failed at os.uname (last unsupported syscall 160); worker workflow emitted pthread_getschedparam failure. ESM/Unicode, timers, crypto and TurboFan cases passed.",
+      "resolved_by": "linux-dsh-sdk.txt"
+    },
+    {
+      "name": "linux-dsh-first.txt",
+      "sha256": "945D016E1EF8D8893F4B41029D22FC53430FAF767E36ED3B8D1CA8B3DE8BD46D",
+      "bytes": 20390,
+      "totals": [],
+      "expected_tests": 27,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [
+        "linux_dsh_import_official_cli"
+      ],
+      "classification": "interrupted_at_import",
+      "summary": "Expected 27. Exactly 23 terminal status=0 passes; case 24 linux_dsh_import_official_cli started without terminal result. No suite totals. Do not report 27/27 or DSH compatibility failure.",
+      "operator_context": {
+        "source": "Parent development-session report, not inferred from the raw Process crashed message",
+        "action": "Developer force-stopped after the 238th CLI import file stalled",
+        "cleanup": "Diagnostics precisely removed the two orphan test environments and the one owned staging file, then confirmed their locations empty; persistent execution history retained."
+      }
+    },
+    {
+      "name": "linux-dsh-sdk.txt",
+      "sha256": "D598764C4737EED0F9726396B7D65435948812A58F4E03891D1F35DCDC4773BF",
+      "bytes": 44746,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=31",
+        "INSTRUMENTATION_RESULT: failed=4",
+        "INSTRUMENTATION_RESULT: passed=27"
+      ],
+      "expected_tests": 31,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_parallel_projects",
+        "linux_dsh_import_official_cli",
+        "linux_dsh_version",
+        "linux_dsh_help"
+      ],
+      "failed_cases": [
+        "linux_dsh_native_addon",
+        "linux_dsh_profile_prepare",
+        "linux_dsh_profile_install_bundle",
+        "linux_dsh_sdk_minimal_eof"
+      ],
+      "started_without_terminal": [],
+      "classification": "completed_mixed_runtime_and_fixture_failures",
+      "summary": "27/31. Node parallel projects overlapped for 3876ms; original CLI imported 890 files in 1764ms and --version/--help passed. Original require-builtin native addon loaded but API returned Unsupported/no-realm. The final three profile cases were fixture/precondition failures, not evaluated SDK compatibility.",
+      "failure_classification": {
+        "linux_dsh_native_addon": "runtime_functional_failure: realm pointer does not point at readable memory",
+        "linux_dsh_profile_prepare": "fixture_missing: dsh-sdk-minimal/rootfs.bundle.gz",
+        "linux_dsh_profile_install_bundle": "not_evaluated: missing preparation prerequisite",
+        "linux_dsh_sdk_minimal_eof": "not_evaluated: missing preparation prerequisite"
+      },
+      "resolved_by": "linux-dsh-directory.txt"
+    },
+    {
+      "name": "linux-sdk-bundle.txt",
+      "sha256": "98DC94D218984E5481722FBBA8DA65D589640446C6D7BD2CB90A49D2DDA4C0BC",
+      "bytes": 39647,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=27",
+        "INSTRUMENTATION_RESULT: failed=1",
+        "INSTRUMENTATION_RESULT: passed=26"
+      ],
+      "expected_tests": 27,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_parallel_projects",
+        "linux_dsh_profile_prepare",
+        "linux_dsh_profile_install_bundle"
+      ],
+      "failed_cases": [
+        "linux_dsh_sdk_minimal_eof"
+      ],
+      "started_without_terminal": [],
+      "classification": "completed_runtime_failure",
+      "summary": "26/27. Original guest Linux Node verified/decompressed and atomically installed the complete 212-package SDK fixture (24424 files, 367519382 bytes). Official sdk-minimal entered boot and failed at the unchanged require-builtin native addon mapping probe; last unsupported syscall 227 (msync). This is no longer a fixture failure.",
+      "bundle": {
+        "bytes": 94883559,
+        "sha256": "95c99e5cfd9af26f33b8851eac3fece35de0a98b8cb1114593db9d624f24e0f0",
+        "files": 24424,
+        "file_bytes": 367519382,
+        "index_sha256": "92e8171e478ffde36beea8bf82510b32daaaa10694a5d607f2842425e26e9bd9"
+      },
+      "failure_classification": {
+        "linux_dsh_sdk_minimal_eof": "runtime_functional_failure: original SDK boot reports Unsupported/no-realm; last unsupported syscall 227"
+      },
+      "scope": "Fresh project HOME/DSH_HOME, empty stdin, explicit linux-jit; no model/tool request or external user credentials.",
+      "resolved_by": "linux-dsh-msync.txt"
+    },
+    {
+      "name": "linux-dsh-msync.txt",
+      "sha256": "6F17C95B583ED8F0BDFC2FFE5F096B1EEF8E7A708F6D17E06C6FA65566F3A77F",
+      "bytes": 44375,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=31",
+        "INSTRUMENTATION_RESULT: failed=1",
+        "INSTRUMENTATION_RESULT: passed=30"
+      ],
+      "expected_tests": 31,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_parallel_projects",
+        "linux_dsh_import_official_cli",
+        "linux_dsh_version",
+        "linux_dsh_help",
+        "linux_dsh_native_addon",
+        "linux_dsh_profile_prepare",
+        "linux_dsh_profile_install_bundle"
+      ],
+      "failed_cases": [
+        "linux_dsh_sdk_minimal_eof"
+      ],
+      "started_without_terminal": [],
+      "classification": "completed_runtime_failure",
+      "summary": "30/31. After logical-VMA msync support, the unchanged original require-builtin native addon loaded and successfully invoked a Node builtin. SDK fixture installation passed; official sdk-minimal exited 0 but reported two inactive entries, which correctly fails complete-profile activation acceptance.",
+      "failure_classification": {
+        "linux_dsh_sdk_minimal_eof": "runtime_functional_failure: sessions plugin readdirSync(root) returned EINVAL; session-checkpoint-policy waited for sessionPersistence. Exit code 0 alone is not accepted."
+      },
+      "diagnosis": {
+        "sources": [
+          "https://github.com/bminor/glibc/blob/glibc-2.36/sysdeps/unix/sysv/linux/opendir.c",
+          "https://github.com/nodejs/node/blob/v24.22.2/deps/uv/src/unix/fs.c"
+        ],
+        "binary_evidence": "Pinned original ARM64 libc.so.6 opendir at 0xb76a0 loads w1=0x84800 at 0xb76ac/0xb76b0 then calls __open_nocancel, whose ARM64 SVC openat number is 56. Flags include O_NONBLOCK; the prior broker openat allowlist rejected that bit.",
+        "scope": "Failure occurs before directory enumeration. last_unsupported_syscall=115 is not assumed to identify the scandir failure.",
+        "fix_status": "Device-confirmed by linux-dsh-directory.txt: Node's 181-entry directory regression and complete sdk-minimal EOF boot pass without inactive entries."
+      },
+      "resolved_by": "linux-dsh-directory.txt"
+    },
+    {
+      "name": "linux-dsh-directory.txt",
+      "sha256": "7D1255587A3180120E66559BDE813C9988274DB5B51D4A4E848746A961A1318C",
+      "bytes": 36981,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=31",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=31"
+      ],
+      "expected_tests": 31,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_parallel_projects",
+        "linux_dsh_import_official_cli",
+        "linux_dsh_version",
+        "linux_dsh_help",
+        "linux_dsh_native_addon",
+        "linux_dsh_profile_prepare",
+        "linux_dsh_profile_install_bundle",
+        "linux_dsh_sdk_minimal_eof"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "classification": "completed_pass",
+      "summary": "31/31. Real Linux ARM64 Node 24.22.2 executes JS/JIT, async fs and 181-entry Unicode directory enumeration/streaming, crypto, worker Atomics and overlapping isolated projects. Official DSH CLI/version/help and unchanged N-API addon pass. Original sdk-minimal reaches appReady and exits normally on empty finite stdin with no inactive entries; profile artifacts were independently checked.",
+      "profile_artifacts": {
+        "cordis_yml_bytes": 223,
+        "cordis_patch_yml_bytes": 217,
+        "pnpm_workspace_yaml_bytes": 61,
+        "package_assertion": "name=dsh-profile-sdk-minimal; private=true; bundles exactly @deepseek-ai/dsh-sdk-minimal"
+      },
+      "scope": "Fresh empty project HOME/DSH_HOME, explicit linux-jit. Full 212-package SDK fixture installed by original guest Node with gzip/SHA validation. No prompt/model/tool, Web service, mobile npm installation or full DSH profile compatibility is claimed.",
+      "metrics": {
+        "node_parallel_overlap_ms": 3924,
+        "cli_import_files": 890,
+        "cli_import_ms": 1809
+      }
+    },
+    {
+      "name": "regression-io-nonblock.txt",
+      "sha256": "50C37B5B5604F67851D058FE3D8F8424DD6817685AD02886C33A63AC7B1B4FA5",
+      "bytes": 15656,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=12",
+        "INSTRUMENTATION_RESULT: failed=1",
+        "INSTRUMENTATION_RESULT: passed=11"
+      ],
+      "expected_tests": 12,
+      "passed_cases": [
+        "io_shell_lua_file_streams",
+        "io_builtin_restore_append",
+        "io_redirection_errors_and_order",
+        "io_nested_exec_redirection",
+        "io_shared_offsets_flags",
+        "io_aliases_across_exec",
+        "io_standard_stream_aliases",
+        "io_last_stdin_alias_close",
+        "io_exec_closes_saved_input",
+        "io_repeated_redirect_no_leak",
+        "io_parallel_project_streams"
+      ],
+      "failed_cases": [
+        "io_errors_capacity_recovery"
+      ],
+      "started_without_terminal": [],
+      "classification": "expectation_outdated",
+      "summary": "11/12. The unchanged legacy musl-smoke --fd-errors fixture still expected F_SETFL(O_NONBLOCK) to fail; the newly implemented operation succeeded and the old assertion reported musl:fail=fd-errors-nonblock-unsupported errno=0. This is recorded as a failed test with an outdated expected contract, not erased or attributed to runtime corruption.",
+      "followup": "Parent updated the fixture to assert real dup-shared nonblock set/clear and rejection of unsupported O_ASYNC. Rebuild/device rerun pending in this snapshot; no replacement pass is claimed.",
+      "resolved_by": "regression-io-final.txt"
+    },
+    {
+      "name": "linux-dsh-interactive.txt",
+      "sha256": "5645E141BB71DB619CE98A103AB5D55F22332F5631894E5ABBA08565B8A8B3DC",
+      "bytes": 48484,
+      "expected_tests": 36,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_interactive_guest_closes_stdin",
+        "linux_node_parallel_projects",
+        "linux_dsh_import_official_cli",
+        "linux_dsh_version",
+        "linux_dsh_help",
+        "linux_dsh_native_addon",
+        "linux_dsh_profile_prepare"
+      ],
+      "failed_cases": [
+        "linux_node_interactive_roundtrip_eof",
+        "linux_node_interactive_empty_cancel",
+        "linux_node_interactive_empty_timeout",
+        "linux_dsh_profile_install_bundle",
+        "linux_dsh_sdk_minimal_eof",
+        "linux_dsh_sdk_initialize_shutdown"
+      ],
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=36",
+        "INSTRUMENTATION_RESULT: failed=6",
+        "INSTRUMENTATION_RESULT: passed=30"
+      ],
+      "started_without_terminal": [],
+      "classification": "completed_mixed_stdin_and_lifecycle_failures",
+      "summary": "30/36. Existing Linux/Node workflows, original CLI and native addon passed. Of four new interactive-input cases, guest-close detection passed; roundtrip and idle timeout exposed stdin type detection incompatibility, and the intervening cancel case could not start because the previous execution was still active. The later SDK installer wait did not complete within its deadline; suite progress resumed immediately after the developer foregrounded the app. SDK EOF and handshake cases did not execute because installation was not confirmed.",
+      "failure_classification": {
+        "linux_node_interactive_roundtrip_eof": "runtime_stdin_incompatibility: INPUT_INCOMPLETE_ROUNDTRIP; accepted 524333 bytes but written 196608, input ended guest_closed; snapshot still stopping/running",
+        "linux_node_interactive_empty_cancel": "cascade_prerequisite_conflict: environment already had an active execution, so cancellation behavior was not evaluated",
+        "linux_node_interactive_empty_timeout": "runtime_stdin_incompatibility: INPUT_UNEXPECTED_EOF and exit 3 with no input supplied; last unsupported syscall 204 (getsockname)",
+        "linux_dsh_profile_install_bundle": "lifecycle_wait_timeout_inconclusive: no completed installer execution record returned; foreground-resume correlation observed, not an established installer incompatibility",
+        "linux_dsh_sdk_minimal_eof": "not_evaluated: installation prerequisite unavailable",
+        "linux_dsh_sdk_initialize_shutdown": "not_evaluated: installation prerequisite unavailable"
+      },
+      "lifecycle_observation": {
+        "source": "Parent development-session device diagnostics and explicit foreground action report, separate from the instrumentation log",
+        "before_action": "Installer wait exceeded 300 seconds; manager/worker/watchdog showed no observable progress. Standard dumpsys reported isFrozen=false and cached=false; device power state was Awake and screen was kept on.",
+        "action": "Developer ran adb am start only for this test application's own .MainActivity.",
+        "after_action": "Watchdog output and instrumentation completion followed immediately; installer wait_timeout and downstream prerequisite failures were reported. Suite final cleanup reported no errors.",
+        "interpretation": "Foreground restoration correlates with progress resuming. This does not identify a specific OEM freezer mechanism, establish failure inside the installer, or test SDK handshake behavior.",
+        "next_validation": "Use an explicit keep_foreground instrumentation mode. Background execution/reliability remains unverified."
+      },
+      "scope": "No prompt/model/tool or external-network request was performed. No all-workflow throughput or background-support claim.",
+      "followup_evidence": "linux-dsh-interactive-queries.txt: actual SDK install/EOF/handshake passed under explicit foreground validation; this does not identify the cause of the earlier scheduling pause."
+    },
+    {
+      "name": "linux-dsh-interactive-queries.txt",
+      "sha256": "03F476BCFB1B6E1CF4901A68289CBB332E25E3153F45B5702E2751F9474CFA29",
+      "bytes": 46932,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=36",
+        "INSTRUMENTATION_RESULT: failed=2",
+        "INSTRUMENTATION_RESULT: passed=34"
+      ],
+      "expected_tests": 36,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_interactive_roundtrip_eof",
+        "linux_node_interactive_guest_closes_stdin",
+        "linux_node_parallel_projects",
+        "linux_dsh_import_official_cli",
+        "linux_dsh_version",
+        "linux_dsh_help",
+        "linux_dsh_native_addon",
+        "linux_dsh_profile_prepare",
+        "linux_dsh_profile_install_bundle",
+        "linux_dsh_sdk_minimal_eof",
+        "linux_dsh_sdk_initialize_shutdown"
+      ],
+      "failed_cases": [
+        "linux_node_interactive_empty_cancel",
+        "linux_node_interactive_empty_timeout"
+      ],
+      "started_without_terminal": [],
+      "foreground_validation": true,
+      "classification": "completed_with_shutdown_boundary_expectation_failures",
+      "summary": "34/36 under explicitly requested foreground validation. Native socket queries allowed original Node to identify interactive stdin: copied-input roundtrip/overflow/explicit EOF and guest-close cases passed. Original DSH finite EOF boot and sequential initialize-response-shutdown exchange both passed. Two idle cancel/timeout checks failed because their old output expectations rejected the EOF line observed after stopping; terminal states, zero input and all four cleanup barriers were correct.",
+      "failure_classification": {
+        "linux_node_interactive_empty_cancel": "expectation_boundary_mismatch: state=cancelled, accepted=written=0 and four barriers true; assertion rejected INPUT_UNEXPECTED_EOF after cancellation closed stdin",
+        "linux_node_interactive_empty_timeout": "expectation_boundary_mismatch: state=timed_out, accepted=written=0 and four barriers true; assertion rejected INPUT_UNEXPECTED_EOF after deadline termination closed stdin"
+      },
+      "followup": {
+        "source": "Parent review and revision report",
+        "action": "Revise tests to require no EOF before stop and permit EOF during termination; also publish cancellation synchronously to close a discovered write-after-cancel race.",
+        "status": "Rebuild/device rerun pending; this run remains 34/36, not retroactively passed."
+      },
+      "sdk_protocol": {
+        "passed": true,
+        "server_name": "deepseek-harness-sdk-runtime",
+        "server_version": "0.0.1",
+        "initialize_id": 1,
+        "shutdown_id": 2,
+        "shutdown_result": {},
+        "input_bytes": 206,
+        "protocol_notifications": 0,
+        "ordering": "stdin remained open; shutdown was sent only after the complete validated initialize response",
+        "exit_code": 0,
+        "cleanup": "runner waited and all four death/output/broker/input barriers verified",
+        "scope": "No prompt, model generation, tool call, Web, external-network request or mobile npm installation."
+      },
+      "fixture_install": {
+        "packages": 212,
+        "files": 24424,
+        "file_bytes": 367519382,
+        "sha256_and_gzip_crc_verified": true,
+        "atomic_publication": true
+      },
+      "metrics": {
+        "parallel_node_overlap_ms": 3833,
+        "cli_import_files": 890,
+        "cli_import_ms": 1934
+      },
+      "artifacts": {
+        "source": "Parent verified build/install report for this run; these are not claimed to identify any later rebuilt files",
+        "main_apk_sha256": "4CEEA1E43653789209E96A982F31A6BE435EB0A97B7D7E7E09AC69D33A04D1DC",
+        "test_apk_sha256": "AA71D20A147E483C3D2EE54CA2F7B9EDA94293F56AA3BC1755DDFEEFC520204D"
+      },
+      "scope": "Foreground-only device evidence; no sustained background scheduling or broad throughput claim. Local socket metadata queries do not establish general guest networking.",
+      "resolved_by": "linux-dsh-interactive-final.txt"
+    },
+    {
+      "name": "linux-dsh-interactive-final.txt",
+      "sha256": "D1C42DBD7EE93F658FE07AD3B34510066347F1E6C68916A29E7FAA35554C398A",
+      "bytes": 42829,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=36",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=36"
+      ],
+      "expected_tests": 36,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_interactive_roundtrip_eof",
+        "linux_node_interactive_empty_cancel",
+        "linux_node_interactive_empty_timeout",
+        "linux_node_interactive_guest_closes_stdin",
+        "linux_node_parallel_projects",
+        "linux_dsh_import_official_cli",
+        "linux_dsh_version",
+        "linux_dsh_help",
+        "linux_dsh_native_addon",
+        "linux_dsh_profile_prepare",
+        "linux_dsh_profile_install_bundle",
+        "linux_dsh_sdk_minimal_eof",
+        "linux_dsh_sdk_initialize_shutdown"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "foreground_validation": true,
+      "classification": "completed_pass",
+      "instrumentation_code": -1,
+      "artifacts": {
+        "source": "Final APK files independently SHA256-hashed after parent confirmed unchanged build/install throughout all four runs",
+        "main_apk_sha256": "DAF4596EC3442713BB33C729A8841CF73FDDB0668D8CD2DDCEE3280B0415D821",
+        "test_apk_sha256": "10FF1245870B13A3424E882D1F350FC3FC208A5BC95169BA18956DA2BF0B8EAF"
+      },
+      "summary": "36/36 on the final non-debuggable Android build with explicit foreground validation. Original Linux ARM64 Node executes real JS/JIT, file/ESM/crypto/timer/worker workflows and interactive stdin roundtrip, explicit EOF, empty cancellation/deadline and guest-close paths. Official DSH CLI/native addon, complete SDK-minimal fixture installation, strict EOF boot and sequential initialize/shutdown all passed.",
+      "sdk_protocol": {
+        "passed": true,
+        "server_name": "deepseek-harness-sdk-runtime",
+        "server_version": "0.0.1",
+        "initialize_id": 1,
+        "shutdown_id": 2,
+        "shutdown_result": {},
+        "input_bytes": 206,
+        "protocol_notifications": 0,
+        "ordering": "stdin remained open; shutdown was sent only after the complete validated initialize response",
+        "exit_code": 0,
+        "cleanup": "runner waited and all four death/output/broker/input barriers verified",
+        "scope": "No prompt, model generation, tool call, Web, external-network request or mobile npm installation."
+      },
+      "fixture_install": {
+        "packages": 212,
+        "files": 24424,
+        "file_bytes": 367519382,
+        "bundle_bytes": 94883559,
+        "sha256_and_gzip_crc_verified": true,
+        "atomic_publication": true,
+        "index_sha256": "92e8171e478ffde36beea8bf82510b32daaaa10694a5d607f2842425e26e9bd9"
+      },
+      "profile_artifacts": {
+        "cordis_yml_bytes": 223,
+        "cordis_patch_yml_bytes": 217,
+        "pnpm_workspace_yaml_bytes": 61,
+        "package_assertion": "name=dsh-profile-sdk-minimal; private=true; bundles exactly @deepseek-ai/dsh-sdk-minimal"
+      },
+      "metrics": {
+        "parallel_node_overlap_ms": 3819,
+        "cli_import_files": 890,
+        "cli_import_ms": 1936,
+        "profile_prepare_ms": 1883
+      },
+      "scope": "Final foreground device suite only. SDK-minimal and local socket metadata support do not establish full Agent/Web profiles, translated general Linux networking, guest npm installation or background scheduling reliability."
+    },
+    {
+      "name": "regression-io-final.txt",
+      "sha256": "E6764A8C45BD2C1DA4B3247209790AE2D6FA689624576BC7AA7B7E6A8D2E1D5C",
+      "bytes": 11992,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=12",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=12"
+      ],
+      "expected_tests": 12,
+      "passed_cases": [
+        "io_shell_lua_file_streams",
+        "io_builtin_restore_append",
+        "io_redirection_errors_and_order",
+        "io_nested_exec_redirection",
+        "io_shared_offsets_flags",
+        "io_errors_capacity_recovery",
+        "io_aliases_across_exec",
+        "io_standard_stream_aliases",
+        "io_last_stdin_alias_close",
+        "io_exec_closes_saved_input",
+        "io_repeated_redirect_no_leak",
+        "io_parallel_project_streams"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "foreground_validation": true,
+      "classification": "completed_pass",
+      "instrumentation_code": -1,
+      "artifacts": {
+        "source": "Final APK files independently SHA256-hashed after parent confirmed unchanged build/install throughout all four runs",
+        "main_apk_sha256": "DAF4596EC3442713BB33C729A8841CF73FDDB0668D8CD2DDCEE3280B0415D821",
+        "test_apk_sha256": "10FF1245870B13A3424E882D1F350FC3FC208A5BC95169BA18956DA2BF0B8EAF"
+      },
+      "summary": "12/12 bundled-backend I/O regressions. Corrected musl fixture now verifies dup-shared O_NONBLOCK set/clear and unsupported O_ASYNC rejection; file redirects, shared offsets, CLOEXEC aliases, feeder completion and independent projects also passed.",
+      "scope": "Bundled-backend regression on the final APK; distinct from general Linux-profile process support."
+    },
+    {
+      "name": "regression-exec-final.txt",
+      "sha256": "1E9DFCE468BA96092C5A7DBBFA79C1BE26491486FE9FFD159AABCB0C5C1E35F1",
+      "bytes": 10930,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=11",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=11"
+      ],
+      "expected_tests": 11,
+      "passed_cases": [
+        "exec_shell_lua_artifacts",
+        "exec_failure_and_redirection",
+        "exec_static_shell_static_chain",
+        "exec_nested_shell_replacement",
+        "exec_native_state_preserved",
+        "exec_invalid_requests_preserve_image",
+        "exec_standard_stream_cloexec",
+        "exec_chain_limit",
+        "exec_deadline_and_reuse",
+        "exec_cancel_and_reuse",
+        "exec_parallel_projects"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "foreground_validation": true,
+      "classification": "completed_pass",
+      "instrumentation_code": -1,
+      "artifacts": {
+        "source": "Final APK files independently SHA256-hashed after parent confirmed unchanged build/install throughout all four runs",
+        "main_apk_sha256": "DAF4596EC3442713BB33C729A8841CF73FDDB0668D8CD2DDCEE3280B0415D821",
+        "test_apk_sha256": "10FF1245870B13A3424E882D1F350FC3FC208A5BC95169BA18956DA2BF0B8EAF"
+      },
+      "summary": "11/11 bundled/catalog backend exec regressions: actual image replacement, inherited state/CLOEXEC, failed-exec preservation, chain limit, original deadline/cancellation and independent projects. This does not establish arbitrary GNU/Linux fork/exec or Node child_process.",
+      "scope": "Bundled-backend regression on the final APK; distinct from general Linux-profile process support."
+    },
+    {
+      "name": "regression-tools-final.txt",
+      "sha256": "FA8AF5F339A6599CD57C23193EAEF6AD948B71696AA063F9CD2236AEC57EB8D7",
+      "bytes": 10085,
+      "totals": [
+        "INSTRUMENTATION_RESULT: expected_tests=10",
+        "INSTRUMENTATION_RESULT: failed=0",
+        "INSTRUMENTATION_RESULT: passed=10"
+      ],
+      "expected_tests": 10,
+      "passed_cases": [
+        "tool_catalog_and_input_limits",
+        "lua_language_arguments_environment",
+        "lua_script_modules_project_files",
+        "lua_stdin_script_and_eof",
+        "lua_binary_stdin_backpressure",
+        "tool_ignored_and_closed_stdin",
+        "lua_timeout_full_stdin_and_reuse",
+        "lua_errors_and_unsupported_operations",
+        "lua_cpu_clock_and_calendar",
+        "lua_parallel_projects"
+      ],
+      "failed_cases": [],
+      "started_without_terminal": [],
+      "foreground_validation": true,
+      "classification": "completed_pass",
+      "instrumentation_code": -1,
+      "artifacts": {
+        "source": "Final APK files independently SHA256-hashed after parent confirmed unchanged build/install throughout all four runs",
+        "main_apk_sha256": "DAF4596EC3442713BB33C729A8841CF73FDDB0668D8CD2DDCEE3280B0415D821",
+        "test_apk_sha256": "10FF1245870B13A3424E882D1F350FC3FC208A5BC95169BA18956DA2BF0B8EAF"
+      },
+      "summary": "10/10 bundled upstream Lua/tool regressions: UTF-8/scripts/modules/project files, binary 1 MiB input and EOF, ignored/closed input, timeout/cancel, calendar/CPU time and overlapping projects.",
+      "scope": "Bundled-backend regression on the final APK; distinct from general Linux-profile process support."
+    }
+  ],
+  "latest_artifacts": [
+    {
+      "file": "android\\probeapp\\build\\outputs\\apk\\validation\\probeapp-validation.apk",
+      "sha256": "DAF4596EC3442713BB33C729A8841CF73FDDB0668D8CD2DDCEE3280B0415D821",
+      "bytes": 5258600
+    },
+    {
+      "file": "android\\probeapp\\build\\outputs\\apk\\androidTest\\validation\\probeapp-validation-androidTest.apk",
+      "sha256": "10FF1245870B13A3424E882D1F350FC3FC208A5BC95169BA18956DA2BF0B8EAF",
+      "bytes": 143607544
+    }
+  ],
+  "latest_completed_run": "regression-tools-final.txt",
+  "regressions": {
+    "groups": 7,
+    "expected": 58,
+    "passed": 58,
+    "failed": 0,
+    "evidence": [
+      "regression-io.txt",
+      "regression-exec.txt",
+      "regression-tools.txt",
+      "regression-program.txt",
+      "regression-runtime.txt",
+      "regression-seccomp_sigsys_return.txt",
+      "regression-arm64_elf.txt"
+    ],
+    "scope": "58/58 is the preserved earlier seven-group bundled-backend baseline. Final-build bundled regressions separately reran I/O 12/12, exec 11/11 and tools 10/10; no final rebuild claim is made for the other four historical groups.",
+    "latest_io_rerun": {
+      "log": "regression-io-final.txt",
+      "passed": 12,
+      "failed": 0,
+      "classification": "completed_pass",
+      "resolves": "regression-io-nonblock.txt"
+    },
+    "prior_io_reruns": [
+      {
+        "log": "regression-io-nonblock.txt",
+        "passed": 11,
+        "failed": 1,
+        "classification": "expectation_outdated",
+        "revalidation": "pending after fixture contract update"
+      }
+    ],
+    "final_build": {
+      "groups": 3,
+      "expected": 33,
+      "passed": 33,
+      "failed": 0,
+      "evidence": [
+        "regression-io-final.txt",
+        "regression-exec-final.txt",
+        "regression-tools-final.txt"
+      ]
+    }
+  },
+  "latest_artifacts_scope": "Final build 94546: parent confirmed build/lint success and same-signature replacement; APK hashes independently verified from actual files. All four final app suites used this unchanged pair.",
+  "source_evidence": {
+    "directory": ".build/device-results/linux-20261107",
+    "read_policy": "Only parent-confirmed completed logs were read and SHA256-hashed. This evidence editor did not change/delete raw logs. Existing historical runs/hashes remain intact; missing old files were not represented as newly verified. Subsequent user-requested scratch/raw-log cleanup, if performed, is recorded separately by the parent.",
+    "verified_completed_logs": [
+      {
+        "name": "regression-io.txt",
+        "bytes": 11786,
+        "sha256": "7739D01C739ADD851F8FAF734384DF5ACA8FC70A9A908C2AF386179DE5DD399E"
+      },
+      {
+        "name": "regression-exec.txt",
+        "bytes": 10724,
+        "sha256": "88698FB3B900D3150EDCC4CA96271705B332FDF1FF9C5EEFA9E0544BD72548D5"
+      },
+      {
+        "name": "regression-tools.txt",
+        "bytes": 9887,
+        "sha256": "BBFC6DDD4198E1A240344C814A6ABB88570E23DCD42EDB49881C1A906713207B"
+      },
+      {
+        "name": "regression-program.txt",
+        "bytes": 6728,
+        "sha256": "F07F4E4DFD41E42087B9127541FB63AF59C644364ACCBEDEDF805853FE16E235"
+      },
+      {
+        "name": "regression-runtime.txt",
+        "bytes": 9069,
+        "sha256": "F73E858586ACC0270E4A7EF453865E8ABF545ED72269321D1BEB6CEF363BD6B4"
+      },
+      {
+        "name": "regression-seccomp_sigsys_return.txt",
+        "bytes": 7772,
+        "sha256": "E28A8D1CE62380BE0496E0259F54CA25EE813C8F1739BA2F375AC92C09E7E450"
+      },
+      {
+        "name": "regression-arm64_elf.txt",
+        "bytes": 7884,
+        "sha256": "E098A12F140E6FED13BB07BAF659805EC64D9BFBCF131A2AACA068FAFF5428E1"
+      },
+      {
+        "name": "linux-jit-first.txt",
+        "bytes": 29472,
+        "sha256": "617445C846ADE9FD48F6C35F893B3DB32B3FB762C45C5C6576D642617FC24C6E"
+      },
+      {
+        "name": "linux-node-stdio.txt",
+        "bytes": 29472,
+        "sha256": "2A042829645A33A6FBE7C73F9CA48995B50748BEB257F8F335BE1BB3029ED5FD"
+      },
+      {
+        "name": "linux-node-ioctl.txt",
+        "bytes": 18559,
+        "sha256": "59CA560975AAF68A8FB5109D2197ABF59E24AEC53786654DE6D11DF5857A4C08"
+      },
+      {
+        "name": "linux-node-workflows.txt",
+        "bytes": 34902,
+        "sha256": "150359FB13F42A0D2C4CEA01DDB6676FC6FFE4ADD17AF98F5A27BCDF280F55D9"
+      },
+      {
+        "name": "linux-dsh-first.txt",
+        "bytes": 20390,
+        "sha256": "945D016E1EF8D8893F4B41029D22FC53430FAF767E36ED3B8D1CA8B3DE8BD46D"
+      },
+      {
+        "name": "linux-dsh-sdk.txt",
+        "bytes": 44746,
+        "sha256": "D598764C4737EED0F9726396B7D65435948812A58F4E03891D1F35DCDC4773BF"
+      },
+      {
+        "name": "linux-sdk-bundle.txt",
+        "bytes": 39647,
+        "sha256": "98DC94D218984E5481722FBBA8DA65D589640446C6D7BD2CB90A49D2DDA4C0BC"
+      },
+      {
+        "name": "linux-dsh-msync.txt",
+        "bytes": 44375,
+        "sha256": "6F17C95B583ED8F0BDFC2FFE5F096B1EEF8E7A708F6D17E06C6FA65566F3A77F"
+      },
+      {
+        "name": "broker-nonblock.txt",
+        "sha256": "5BC9095EADD3EA59465CFF648669ED851B3EC6AC095F77533F43CDFD89DCF0EF",
+        "bytes": 405
+      },
+      {
+        "name": "network-capability-v2.txt",
+        "sha256": "DEE7821ED831A679823B81671391C3758C0A2290584CCB87908D78C812148021",
+        "bytes": 32487
+      },
+      {
+        "name": "linux-dsh-directory.txt",
+        "bytes": 36981,
+        "sha256": "7D1255587A3180120E66559BDE813C9988274DB5B51D4A4E848746A961A1318C"
+      },
+      {
+        "name": "regression-io-nonblock.txt",
+        "bytes": 15656,
+        "sha256": "50C37B5B5604F67851D058FE3D8F8424DD6817685AD02886C33A63AC7B1B4FA5"
+      },
+      {
+        "name": "linux-dsh-interactive.txt",
+        "sha256": "5645E141BB71DB619CE98A103AB5D55F22332F5631894E5ABBA08565B8A8B3DC",
+        "bytes": 48484
+      },
+      {
+        "name": "linux-dsh-interactive-queries.txt",
+        "bytes": 46932,
+        "sha256": "03F476BCFB1B6E1CF4901A68289CBB332E25E3153F45B5702E2751F9474CFA29"
+      },
+      {
+        "name": "linux-dsh-interactive-final.txt",
+        "bytes": 42829,
+        "sha256": "D1C42DBD7EE93F658FE07AD3B34510066347F1E6C68916A29E7FAA35554C398A"
+      },
+      {
+        "name": "regression-io-final.txt",
+        "bytes": 11992,
+        "sha256": "E6764A8C45BD2C1DA4B3247209790AE2D6FA689624576BC7AA7B7E6A8D2E1D5C"
+      },
+      {
+        "name": "regression-exec-final.txt",
+        "bytes": 10930,
+        "sha256": "1E9DFCE468BA96092C5A7DBBFA79C1BE26491486FE9FFD159AABCB0C5C1E35F1"
+      },
+      {
+        "name": "regression-tools-final.txt",
+        "bytes": 10085,
+        "sha256": "FA8AF5F339A6599CD57C23193EAEF6AD948B71696AA063F9CD2236AEC57EB8D7"
+      },
+      {
+        "name": "final-cleanup-diagnostics.txt",
+        "bytes": 316,
+        "sha256": "C2FAD336A0942C5AC0C6EB5C13DE294925CE92FA539DC08D97BE114CEFC03266"
+      },
+      {
+        "name": "socket-query-race.txt",
+        "bytes": 206,
+        "sha256": "C9F5951A7B90EFC171D55FEC139A1495640313BA9995722861D537FAE7C5CF0A"
+      }
+    ],
+    "status_parser": "Status=1 starts a case, status=0 passes, negative status fails; positive nonterminal progress such as status=2 is not a failure.",
+    "operator_context": "Intentional force-stop and precise orphan cleanup are attributed to the parent development-session report; raw instrumentation alone says Process crashed."
+  },
+  "runtime_probe_diagnosis": {
+    "linux_syscall": 227,
+    "name": "msync",
+    "source": "https://github.com/deepseek-ai/dsh-node-addon-require-builtin/blob/master/packages/native/src/runtime_probe/posix.cc",
+    "source_blob": "16899af297d70da5a39061a9c8afab926ae934f7",
+    "binary_sha256": "d5637c73de2af4ce4d0ddd783444d0acc741c1a43ceede3ce7cba7bdda9b5b62",
+    "evidence": "Official master source performs page-aligned msync(page,1,MS_ASYNC); published ARM64 addon dynsym includes msync@GLIBC_2.17 and its unchanged error text matches the real device failure.",
+    "provenance_limit": "Source version and binary symbols corroborate the mapping-probe diagnosis; exact npm tarball-to-master commit build identity has not been established.",
+    "fix_status": "Device-confirmed by linux-dsh-msync.txt and linux-dsh-directory.txt: the original published N-API addon invoked a Node builtin, and SDK boot passed the former no-realm check.",
+    "scope": "Mapped PROT_NONE accepted; holes/foreign addresses rejected. Anonymous/MAP_PRIVATE only, not shared-file writeback.",
+    "kernel_reference": "https://github.com/torvalds/linux/blob/v6.6/mm/msync.c",
+    "kernel_source_blob": "ac4c9bfea2e7faff18c3cf3bd8b74766cdbee166",
+    "range_limit": "Sucrune conservatively rejects length page-rounding overflow with ENOMEM instead of Linux's unsigned-wrap-to-zero corner. Normal aligned length=0 preserves Linux success, including outside the guest reservation.",
+    "portable_test_evidence": {
+      "groups_passed": 21,
+      "groups_failed": 0,
+      "scope": "Windows x64 / MSVC /W4 /WX with virtual-memory adapter; production POSIX branch and full tests also strictly compiled/linked for Android29 ARM64. Not itself evidence of guest msync execution.",
+      "sources_sha256": {
+        "native/guest_space.c": "AFEF42902B58614E406662F87347A5822DC9FFC929D172E4ACE99B1B3E67EDEA",
+        "native/guest_space.h": "BDDB8263469760339B81FBFD75D0E82965B5294B85517095BFCAAD024E3426EB",
+        "native/guest_space_tests.c": "68E9770560FFEB39EEF35789C0ED57B00638958957F28AF2796D91EF8B604E3C"
+      }
+    }
+  },
+  "broker_nonblock_validation": {
+    "scope": "Actual byte-message broker plus shared production guest FD table; standalone Android shell UID2000, not a Linux guest/App sandbox execution claim.",
+    "attempts": [
+      {
+        "name": "initial_standalone_attempt",
+        "status": "incomplete_fixture_failure",
+        "source": "Parent tool-output report: initial attempt stderr was not captured; broker-nonblock.txt identifies the final rerun below.",
+        "failure": "Android SELinux denied the standalone test's mkfifo fixture creation with errno 13 (EACCES); suite stopped before completion. This attempt is not counted as passing.",
+        "cleanup": "Parent inspected exact session scratch, removed two owned test files and the exact mkdtemp tree. No unrelated files removed."
+      },
+      {
+        "name": "broker-nonblock.txt",
+        "sha256": "5BC9095EADD3EA59465CFF648669ED851B3EC6AC095F77533F43CDFD89DCF0EF",
+        "bytes": 405,
+        "status": "completed_with_one_explicit_skip",
+        "summary": "Main broker suite passed: actual production fd-table dup alias visibility, independent opens, clear/set and invalid flags, host nonblocking safeguard, slot reuse/exec, directory reads and error codes. FIFO fixture creation denied EACCES; that subcase explicitly skipped, not counted as passing.",
+        "skipped_subcases": 1,
+        "cleanup": "Parent confirmed exact device scratch cleanup after completion."
+      }
+    ],
+    "subcase_policy": "Only mkfifo EPERM/EACCES skips the FIFO-rejection subcase with explicit output/count; other setup errors fail, and platforms permitting FIFO creation execute the rejection checks. No skip is represented as a pass.",
+    "sources_sha256": {
+      "native/workspace_broker.c": "58C78F7573B74299005161FA0DD6BFF8C400B4DBD4217CECFA5932252B29E68B",
+      "native/workspace_broker.h": "80D17788BFED0A3192D19763078CCF8F47726B7A7A5FE854D01121FFB1B8B801",
+      "native/workspace_broker_tests.c": "2222785290BA0D6789297DA48F5DC65F3136D5118FB7237AD2BFDA59BE1B29A3"
+    },
+    "device_guest_confirmation": "linux-dsh-directory.txt passed Node synchronous/asynchronous directory scans and streamed opendir over 181 entries plus the unchanged SDK sessions plugin startup."
+  },
+  "host_native_checks": {
+    "report": ".build/native-host-check.json",
+    "sha256": "F13716B9A162505ECB94094E46DC4AE63F5E844375E3B0952FE240B70DD703B2",
+    "passed_groups": 6,
+    "failed_groups": 0,
+    "checked_at_utc": "2026-11-06T23:42:06.7115264Z",
+    "scope": "Native model/ownership/address-codec checks and Windows virtual-memory adapter; no Linux guest execution. Exact source hashes and exclusions are retained in the referenced report.",
+    "tests": [
+      {
+        "name": "guest_space_invariants",
+        "summary": "Guest space checks: 21/21 passed; sparse 64 GiB, aligned gaps, VMA transitions, snapshot preservation, explicit anonymous JIT policy and private msync."
+      },
+      {
+        "name": "guest_signal_model",
+        "summary": "guest_signals: 7 host groups passed; native handler execution is not claimed"
+      },
+      {
+        "name": "guest_fd_ownership",
+        "summary": "Guest FD ownership invariants: 16/16 passed (pure table tests; no Linux guest execution)."
+      },
+      {
+        "name": "guest_gate_registry",
+        "summary": "Guest gate registry checks: 9/9 passed; 64 slots, legacy fallback, 16000 concurrent ownership cycles and 1000 publication handshakes."
+      },
+      {
+        "name": "linux_filter_interpreter",
+        "summary": "Linux filter checks: 134868 decisions across 4100 source-generated configurations passed."
+      },
+      {
+        "name": "network_probe_loopback_addresses",
+        "summary": "network loopback address checks passed: 9238"
+      }
+    ],
+    "cleanup": "unique build directory removed"
+  },
+  "network_capability_probe": {
+    "name": "network-capability-v2.txt",
+    "sha256": "DEE7821ED831A679823B81671391C3758C0A2290584CCB87908D78C812148021",
+    "bytes": 32487,
+    "integrity_cases_passed": 5,
+    "scope": "API35 Android manager and isolated probe service; Binder ParcelFileDescriptor localhost measurement, not translated Linux guest network syscalls.",
+    "observations": [
+      "Manager direct IPv4/IPv6 TCP socket creation succeeded; isolated_app direct socket creation returned EACCES.",
+      "Isolated worker used a manager-connected socket for verified bidirectional loopback echo; received nonblocking unconnected socket completed connect then echo.",
+      "Isolated worker listen/accept on a received listener returned EACCES; manager fallback using the same description performed listen/accept and echo."
+    ],
+    "isolated_echo_capabilities_verified": 2,
+    "full_network_support": "not_established",
+    "not_tested": [
+      "UDP",
+      "DNS",
+      "external access",
+      "SCM_RIGHTS ancillary parsing",
+      "fresh native runner identity",
+      "project network isolation"
+    ]
+  },
+  "remaining_validation": [
+    "Translated guest network socket lifecycle, DNS/TLS/HTTP/WebSocket and project network policy",
+    "General Linux fork/exec, child_process, PTY, PATH/shebang and conventional Bash/tool workflows",
+    "Guest npm/pnpm installation and package lifecycle execution",
+    "Full official Web/base/Agent profiles and real project/session/tool workflows",
+    "Android background lifecycle/reliability independently from explicit foreground validation; no OEM freezing cause or background guarantee established."
+  ],
+  "latest_successful_linux_run": "linux-dsh-interactive-final.txt",
+  "latest_sdk_handshake_run": "linux-dsh-interactive-final.txt",
+  "artifact_history": [
+    {
+      "scope": "Historical artifact hashes retained from the linux-threads-first-era snapshot; not claimed to identify the APKs used by the newer completed runs.",
+      "artifacts": [
+        {
+          "file": "android\\probeapp\\build\\outputs\\apk\\validation\\probeapp-validation.apk",
+          "sha256": "96370C55D6BD7502DB0D6287B2528EE56233068A7ECC03C85BAA805E97DE2F49"
+        },
+        {
+          "file": "android\\probeapp\\build\\outputs\\apk\\androidTest\\validation\\probeapp-validation-androidTest.apk",
+          "sha256": "7BFD434349195700B8AE252670979A072551E3A15CD2C925A3D91B34909F3781"
+        }
+      ]
+    }
+  ],
+  "final_build_validation": {
+    "build_session": "94546",
+    "build_seconds": 51,
+    "build_and_lint": "passed, parent build report",
+    "same_signature_overwrite_install": "passed, parent install report",
+    "foreground_validation": true,
+    "functional_groups": 4,
+    "expected": 69,
+    "passed": 69,
+    "failed": 0,
+    "evidence": [
+      "linux-dsh-interactive-final.txt",
+      "regression-io-final.txt",
+      "regression-exec-final.txt",
+      "regression-tools-final.txt"
+    ],
+    "apk_hash_source": "Independent Get-FileHash of actual final APK files",
+    "main_apk_sha256": "DAF4596EC3442713BB33C729A8841CF73FDDB0668D8CD2DDCEE3280B0415D821",
+    "test_apk_sha256": "10FF1245870B13A3424E882D1F350FC3FC208A5BC95169BA18956DA2BF0B8EAF",
+    "scope": "69 app cases are separate from earlier 58-case regression baseline, host model tests, standalone UID2000 module tests and cleanup diagnostics."
+  },
+  "host_native_check_history": [
+    {
+      "report": ".build/native-host-check.json",
+      "sha256": "CC96116FE9DD1F7514A6BDFDF4E5B26C6A909E086EFAF97EE6749689CD80DC4E",
+      "passed_groups": 6,
+      "failed_groups": 0,
+      "scope": "Windows x64/MSVC models and virtual-memory adapter; not Linux guest execution. Source hash checks passed.",
+      "memory_group": "21/21 including private msync",
+      "network_address_group": "9238 loopback address assertions; not actual socket transport",
+      "checked_at_utc": "2026-11-06T23:04:56.1257768Z"
+    }
+  ],
+  "interactive_input_host_checks": {
+    "state_queue": {
+      "report": ".build/execution-input-check.json",
+      "sha256": "7E265B33C7D5C8EDD06EA81F78B33CDA129E1F4552CE5747CB65583FEE530578",
+      "checked_at_utc": "2026-11-06T23:39:00.5195427Z",
+      "passed": 12,
+      "scope": "Windows JVM input queue/state tests and optional Android API signature compilation; no device or FD capability claim",
+      "android_signature_compile": true,
+      "source_sha256": {
+        "android/probeapp/src/main/kotlin/com/sucrune/probe/ExecutionInput.kt": "e21b59e81d3f42f58202206acff76971eaab39fcc54e9eb011927d1a0ce054f3",
+        "scripts/tests/ExecutionInputTests.kt": "dabad2d6eee114e3087a1c7ef799f3d75c6d1a450895f541aa8a639dfaa83537",
+        "scripts/test-execution-input.ps1": "c525a7c4b35c6bcdd0456228a98eac746fe185fc925f52456174af5fd52a1dda",
+        "android/probeapp/src/main/kotlin/com/sucrune/probe/NativeProbe.kt": "7be745d813452e51bce1e7fdc8918ccda96cd056577c5ba9fa0c280b78e4d142",
+        "android/probeapp/src/main/kotlin/com/sucrune/probe/RuntimeClient.kt": "021f4389962ff630e9c784b1dd906f6d8a931dcf8aefc5a6e0c5064553b58ae7",
+        "android/probeapp/src/main/kotlin/com/sucrune/probe/RuntimeWorkerService.kt": "345724a1794c7d209fa4db31f00915e7d0609705d2006e6a44c7683258c6c8f1"
+      },
+      "scratch_removed": true
+    },
+    "review_compile": {
+      "report": ".build/execution-input-review-check.json",
+      "sha256": "D503CC9B2598696E9BF91C7054259F853E0FEC238AB6C5FFFB3CCA467EA19E57",
+      "checked_at_utc": "2026-11-06T23:39:44.9843922Z",
+      "passed": true,
+      "compiler": "Kotlin 2.0.21 JVM17 Android37 -Werror",
+      "scope": "Strict Kotlin signature compile of actual production input and real Node workflow helper; not a device result",
+      "source_sha256": {
+        "android/probeapp/src/main/kotlin/com/sucrune/probe/RuntimeClient.kt": "021f4389962ff630e9c784b1dd906f6d8a931dcf8aefc5a6e0c5064553b58ae7",
+        "android/probeapp/src/main/kotlin/com/sucrune/probe/ExecutionInput.kt": "e21b59e81d3f42f58202206acff76971eaab39fcc54e9eb011927d1a0ce054f3",
+        "android/probeapp/src/main/kotlin/com/sucrune/probe/NativeProbe.kt": "7be745d813452e51bce1e7fdc8918ccda96cd056577c5ba9fa0c280b78e4d142",
+        "android/probeapp/src/main/kotlin/com/sucrune/probe/RuntimeWorkerService.kt": "345724a1794c7d209fa4db31f00915e7d0609705d2006e6a44c7683258c6c8f1",
+        "android/probeapp/src/androidTest/kotlin/com/sucrune/probe/tests/NodeInputWorkflows.kt": "9c50b7fabb70ae2a55af8c041d796244b3eb8ec9ba38eb28aa43c44dae460b69"
+      },
+      "scratch_removed": true
+    },
+    "device_evidence": "linux-dsh-interactive-final.txt"
+  },
+  "socket_query_standalone_validation": {
+    "scope": "Independent ARM64 native module under adb shell UID2000, not the app/isolated runner. Reported identity and remote cleanup are attributed to parent; raw stdout is independently hashed. This does not establish translated guest network creation/connect/listen.",
+    "history": [
+      {
+        "report": ".build/guest-socket-name-check.json",
+        "sha256": "3B87D9F2C663C0A6CADB85E6DA7211AF33C94FCE8633EE4C300B0366202E3EAC",
+        "passed": 10,
+        "skipped": 0,
+        "raw": {
+          "platform": "Android 15 API35 ARM64",
+          "uid": 2000,
+          "identity_source": "root device-run report; raw stdout does not include UID",
+          "app_uid_test": false,
+          "isolated_runner_test": false,
+          "raw_path": ".build/device-results/linux-20261107/socket-names.txt",
+          "raw_sha256": "acd5c9d89fad0d0f07229923bdf20c5189badc49198ee09bbb8b91e7a900ae7e",
+          "raw_bytes": 206,
+          "output": "Guest socket foundations: 10/10 passed, 0 skipped; sockaddr codecs, local socketpair rollback/transport, retained query identity and private socket names. No Android app network capability is established.",
+          "cleanup": "root reports exact owned remote scratch files removed and directory removed; no device actions by this agent"
+        }
+      },
+      {
+        "report": ".build/guest-sockets-check.json",
+        "sha256": "6DAEE442359A0EC7468FEF6048DA4A10B17D9147976A379D0C1DDC1B759F124C",
+        "passed": 7,
+        "skipped": 0
+      }
+    ],
+    "latest": {
+      "report": ".build/guest-socket-query-race-check.json",
+      "report_sha256": "1030CA0B18E6B64B68C0D3CAFA7FA0C494223853E84B625F9717D9549FEF3BF4",
+      "raw": ".build/device-results/linux-20261107/socket-query-race.txt",
+      "raw_sha256": "C9F5951A7B90EFC171D55FEC139A1495640313BA9995722861D537FAE7C5CF0A",
+      "raw_bytes": 206,
+      "passed": 11,
+      "skipped": 0,
+      "summary": "Adds acquire_many per-pin ENOTSUP -> ENOTSOCK normalization for FDs lacking a local alias, while preserving the explicit ENOTSUP privacy boundary for named UNIX sockets. Dual Android29 ABI strict compile/link passed.",
+      "app_integration_evidence": "linux-dsh-interactive-final.txt"
+    }
+  },
+  "final_cleanup": {
+    "log": ".build/device-results/linux-20261107/final-cleanup-diagnostics.txt",
+    "sha256": "C2FAD336A0942C5AC0C6EB5C13DE294925CE92FA539DC08D97BE114CEFC03266",
+    "bytes": 316,
+    "instrumentation_code": -1,
+    "environments": [],
+    "import_scratch": [],
+    "removed": [],
+    "functional_test_count": 0,
+    "application_retention": {
+      "source": "Parent package/process inspection report, not fields in the diagnostics log",
+      "both_apps_installed": true,
+      "version_code": 7,
+      "version_name": "0.7.0-linux-dev",
+      "min_sdk": 29,
+      "target_sdk": 37,
+      "debuggable": false,
+      "no_remaining_application_or_runner_processes": true
+    },
+    "scope": "Final device project/import cleanup observation; host scratch and raw-log cleanup are tracked separately by the parent.",
+    "host_cleanup_manifest": "android15-linux-cleanup.json",
+    "host_raw_logs_removed": true
+  }
+}

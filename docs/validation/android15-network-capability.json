@@ -1,0 +1,162 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-07",
+  "scope": "Ordinary Android application and disposable isolated Service localhost TCP capability measurement; not Linux guest runtime networking.",
+  "outcome": {
+    "measurement_cases_passed": 5,
+    "measurement_cases_failed": 0,
+    "isolated_echo_capabilities_verified": 2,
+    "runtime_networking": "not_established",
+    "full_network_support": "not_established"
+  },
+  "platform": {
+    "android_api": 35,
+    "target_sdk": 37,
+    "manager_uid": 10422,
+    "manager_pid": 8498,
+    "manager_selinux": "u:r:untrusted_app:s0:c166,c257,c512,c768",
+    "isolated_selinux": "u:r:isolated_app:s0:c512,c768",
+    "scope_limit": "One physical Android 15 device; no claim for other versions or vendor policies."
+  },
+  "transport": "Binder ParcelFileDescriptor; received aliases refer to manager-created kernel socket descriptions.",
+  "observations": {
+    "manager_baseline": "IPv4/IPv6 TCP creation succeeded; connected localhost PING/PONG matched independently at both endpoints.",
+    "isolated_direct_create": {
+      "ipv4_errno": 13,
+      "ipv6_errno": 13,
+      "name": "EACCES",
+      "echo": "not_attempted"
+    },
+    "received_connected_socket": {
+      "isolated_echo_verified": true,
+      "sent_bytes": 4,
+      "received_bytes": 4,
+      "epoll_add_and_wait": "passed",
+      "received_cloexec": true
+    },
+    "received_unconnected_socket": {
+      "initial_connect_errno": 115,
+      "initial_connect_errno_name": "EINPROGRESS",
+      "poll_result": 0,
+      "connect_completion": 0,
+      "isolated_echo_verified": true,
+      "sent_bytes": 4,
+      "received_bytes": 4,
+      "manager_connect_fallback": "not_needed"
+    },
+    "received_listener": {
+      "isolated_listen_errno": 13,
+      "isolated_accept4_errno": 13,
+      "errno_name": "EACCES",
+      "isolated_echo": "not_attempted",
+      "manager_same_description_listen_and_accept": "passed",
+      "manager_echo_verified": true,
+      "fallback_counts_as_isolated_success": false
+    },
+    "received_socket_options": "F_GETFD/CLOEXEC, F_GETFL/F_SETFL nonblocking, FIONBIO, SO_ERROR/SO_TYPE, SO_KEEPALIVE and TCP_NODELAY set/get succeeded.",
+    "fionread": "Succeeded on connected/unconnected TCP descriptors; EINVAL(22) on the listener in both isolated and manager processes, not evidence of an isolation permission denial."
+  },
+  "cleanup": {
+    "isolated_cases": [
+      {
+        "mode": 0,
+        "uid": 99063,
+        "pid": 8553,
+        "received_fds": 0,
+        "received_descriptor_closed": true,
+        "native_owned_fds": 1,
+        "native_closed_fds": 1,
+        "binder_death_confirmed": true,
+        "binding_cleanup_confirmed": true
+      },
+      {
+        "mode": 1,
+        "uid": 99064,
+        "pid": 8602,
+        "received_fds": 1,
+        "received_descriptor_closed": true,
+        "native_owned_fds": 2,
+        "native_closed_fds": 2,
+        "binder_death_confirmed": true,
+        "binding_cleanup_confirmed": true
+      },
+      {
+        "mode": 2,
+        "uid": 99065,
+        "pid": 8626,
+        "received_fds": 1,
+        "received_descriptor_closed": true,
+        "native_owned_fds": 2,
+        "native_closed_fds": 2,
+        "binder_death_confirmed": true,
+        "binding_cleanup_confirmed": true
+      },
+      {
+        "mode": 3,
+        "uid": 99066,
+        "pid": 8649,
+        "received_fds": 1,
+        "received_descriptor_closed": true,
+        "native_owned_fds": 1,
+        "native_closed_fds": 1,
+        "binder_death_confirmed": true,
+        "binding_cleanup_confirmed": true
+      }
+    ],
+    "native_manager_owned_fds_closed": true,
+    "manager_peer_threads_joined": 4,
+    "manager_canonical_lifetime": "Retained until isolated Binder death; closed by enclosing Kotlin use scopes on normal return.",
+    "boundary": "Probe Service has no forked runner. Binder death proves only this Service process reclamation and does not replace runner waitpid.",
+    "device_scratch_files_created": false,
+    "raw_log_removed_by_this_review": false
+  },
+  "timing": {
+    "native_budget_ms": 3000,
+    "observed_native_elapsed_ms": [
+      0,
+      0,
+      1,
+      0
+    ],
+    "interpretation": "Small diagnostic exchanges only; excludes binding/startup and is not a throughput, latency or concurrency benchmark."
+  },
+  "not_tested": [
+    "Fresh native Linux runner and its inherited execution state",
+    "SCM_RIGHTS delivery/ancillary parsing and error cleanup",
+    "Linux guest socket syscalls or original Node HTTP/net workflows",
+    "UDP and DNS",
+    "External network access",
+    "Isolated bind permissions",
+    "Project network namespaces or per-project network isolation",
+    "Cross-device/Android-version coverage",
+    "Sustained performance/backpressure/cancellation under load"
+  ],
+  "design_inference": "Results justify testing manager-created sockets with direct isolated data/epoll operations; listen/accept require a manager path on this device. Transport and runtime integration still need separate validation.",
+  "prior_invalid_run": {
+    "measurement_passed": 0,
+    "measurement_expected": 5,
+    "classification": "probe_fixture_defect",
+    "cause": "Loopback validation rejected the IPv4-mapped IPv6 form returned for the Java baseline socket; isolated cases were not evaluated.",
+    "fix": "Accept only exact 127.0.0.1, ::1 and ::ffff:127.0.0.1; all other address bytes remain rejected.",
+    "host_address_assertions_passed": 9238,
+    "host_automatic_groups_passed": "6/6",
+    "raw_sha256": "decae9f2d8d6b5e310be99fe99b6e954f2eff66d44a6486319b2ff4633183a0d"
+  },
+  "evidence": {
+    "raw_relative_path": ".build/device-results/linux-20261107/network-capability-v2.txt",
+    "raw_sha256": "dee7821ed831a679823b81671391c3758c0a2290584ccb87908d78c812148021",
+    "raw_bytes": 32487,
+    "source_hash_scope": "Actual network probe source files read after the run and independently matched to stage; this is not an APK reproducibility claim.",
+    "source_sha256": {
+      "native/network_probe.c": "ddab71eb2db9d7cdab28eb1a556f0205487b5076ea7033fce8e92eda58e91b32",
+      "native/network_probe.h": "4f5842c8e0506ce5ae654359d8adbedf8cdd67b14c6fee646e8e1a678ab723a0",
+      "native/jni.c": "b99e614015d4e35c7925020f368d4bacc49430da67d9e8b1c67f796dd864ebd1",
+      "native/CMakeLists.txt": "f28f309463add23b42d0fcf4164c24bae21597da1782e9dbf9cb1ad26fcf9cbc",
+      "android/probeapp/src/main/AndroidManifest.xml": "8727216c1ed271e78150e84e5aed87d8bc11c26b3bbc366b99d6ffe1eae1c3e4",
+      "android/probeapp/src/main/kotlin/com/sucrune/probe/NativeProbe.kt": "7be745d813452e51bce1e7fdc8918ccda96cd056577c5ba9fa0c280b78e4d142",
+      "android/probeapp/src/main/kotlin/com/sucrune/probe/NetworkProbeService.kt": "7299d3947429b4ade5a553b1f74532263f8c22c6926beadd49ee71681e37bc89",
+      "android/probeapp/src/androidTest/kotlin/com/sucrune/probe/tests/NetworkCapabilityChecks.kt": "bff8aec3c7926678f5642dd2d90a1f67dcfc6a1ce43bc875bb7f14b9cf95f062",
+      "android/probeapp/src/androidTest/kotlin/com/sucrune/probe/tests/ProbeInstrumentation.kt": "d75efc205ae11018917ba04a7149406655c4f31b2c10c279f760f3653cf1b514"
+    }
+  }
+}

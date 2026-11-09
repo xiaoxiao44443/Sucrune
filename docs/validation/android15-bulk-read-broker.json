@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "scope": "Standalone native workspace broker over SOCK_SEQPACKET",
+  "platform": "Android 15 ARM64",
+  "api_level": 35,
+  "uid": 2000,
+  "exit_code": 0,
+  "binary_sha256": "c064cf78b77425833a4ba228d58900cdbc218069f2ee485091aeb2d94cabaf74",
+  "source_sha256": {
+    "native/workspace_broker.c": "92dbbf81f09edea02dafe06f978a156ea375504094e59abc5e55da396688324c",
+    "native/workspace_broker.h": "1b76053e652e92a8604ce3d9dcb099749279e19494aa393fff785252b19e2932",
+    "native/workspace_broker_tests.c": "9a9366d6b04477d060ff4f7a8de3a4e845b454ec80c7230e1acd5354b4ebe479"
+  },
+  "stdout_utf8_lf_sha256": "8482e343f965290fd6123cdd78aced57aa1549e235910be2ddc973c5c939e962",
+  "checks": [
+    "A 1 MiB request returned the actual short file length, with a 4096-byte first packet and a 29-byte last packet. EOF returned zero without a pending transfer.",
+    "After fork the child observed the fully advanced shared OFD offset and had no inherited transfer. Subsequent mutation did not change buffered NEXT bytes.",
+    "A positioned request observed the new file byte without moving the shared offset. Invalid limits, offset overflow, mode, payload, directory and bad FD were rejected.",
+    "A second BEGIN and malformed NEXT/ABORT did not overwrite the snapshot. ABORT was idempotent, and closing a fork session with an undrained transfer allowed broker completion."
+  ],
+  "skipped_other_broker_subcases": 1,
+  "device_cleanup": {
+    "unique_directory_created": true,
+    "device_binary_hash_verified": true,
+    "removed": true,
+    "absence_verified": true,
+    "apk_install_or_instrumentation": false
+  },
+  "skipped_other_scope": "Existing FIFO fixture: mkfifo denied; not counted as covered."
+}

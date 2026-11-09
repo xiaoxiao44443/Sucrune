@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "checked_at_utc": "2026-11-06T23:20:19.8669148Z",
+  "passed": true,
+  "compiler": "Kotlin 2.0.21 K2JVMCompiler",
+  "jvm_target": 17,
+  "warnings_as_errors": true,
+  "android_compile_api": 37,
+  "source_sha256": {
+    "android\\probeapp\\src\\main\\kotlin\\com\\sucrune\\probe\\NativeProbe.kt": "7BE745D813452E51BCE1E7FDC8918CCDA96CD056577C5BA9FA0C280B78E4D142",
+    "android\\probeapp\\src\\main\\kotlin\\com\\sucrune\\probe\\RuntimeClient.kt": "BCF15DCCF5019E11F661DFBF9AECE8B0F114F83E544EBE7EA86BBE62C92B5DDA",
+    "android\\probeapp\\src\\main\\kotlin\\com\\sucrune\\probe\\RuntimeWorkerService.kt": "345724A1794C7D209FA4DB31F00915E7D0609705D2006E6A44C7683258C6C8F1",
+    "android\\probeapp\\src\\main\\kotlin\\com\\sucrune\\probe\\ExecutionInput.kt": "E21B59E81D3F42F58202206ACFF76971EAAB39FCC54E9EB011927D1A0CE054F3",
+    "android/probeapp/src/androidTest/kotlin/com/sucrune/probe/tests/DshProfileChecks.kt": "9A5A26FEDA34DA8445A22B3A399B74000BF8234B6C646C4EEEE7F706747D286A"
+  },
+  "output_jar_sha256": "CE91DB8A588F1816429CF08A570049F1216D09869F4B5C6038D31E4B7F686ADE",
+  "scope": "Standalone Android Kotlin compilation of the real interactive RuntimeClient dependencies and DshProfileChecks; not a device SDK protocol execution result.",
+  "device_execution": "Compilation evidence only. The initial expanded run did not execute the SDK handshake because installation was unconfirmed; a later 34/36 foreground run separately passed it while retaining two unrelated cancellation/timeout expectation failures. The final unchanged APK pair passed Linux/Node/DSH 36/36, including the real initialize/shutdown exchange, and three bundled regression groups for 69/69 app cases. See android15-linux-progress.json and linux-dsh-interactive-final.txt (SHA256 D1C42DBD7EE93F658FE07AD3B34510066347F1E6C68916A29E7FAA35554C398A). These are separate device records, not execution inferred from this earlier compiler artifact.",
+  "cleanup": "Removed only owned .build/dsh-interactive-compile.jar and .build/native-msync-check after verifying absolute workspace targets; package bundles/caches retained.",
+  "later_input_checks": {
+    "state_queue_report": ".build/execution-input-check.json",
+    "state_queue_report_sha256": "7E265B33C7D5C8EDD06EA81F78B33CDA129E1F4552CE5747CB65583FEE530578",
+    "state_queue_tests_passed": 12,
+    "actual_source_compile_report": ".build/execution-input-review-check.json",
+    "actual_source_compile_sha256": "D503CC9B2598696E9BF91C7054259F853E0FEC238AB6C5FFFB3CCA467EA19E57",
+    "source_count": 5,
+    "compiler": "Kotlin 2.0.21 JVM17 Android37 -Werror",
+    "scope": "Later actual production queue/Client dependencies plus NodeInputWorkflows compile; separate from this earlier DshProfileChecks artifact. Neither host report is device proof."
+  }
+}

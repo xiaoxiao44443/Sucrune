@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <application
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:icon="@drawable/ic_probe"
+        android:label="Sucrune Probe"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <activity android:name=".MainActivity" android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".RuntimeActivity" android:exported="false" />
+        <service
+            android:name=".RuntimeWorkerService"
+            android:exported="false"
+            android:isolatedProcess="true"
+            android:process=":runtime_worker" />
+        <service
+            android:name=".AppProbeService"
+            android:exported="false"
+            android:process=":probe_app" />
+        <service
+            android:name=".IsolatedProbeService"
+            android:exported="false"
+            android:isolatedProcess="true"
+            android:process=":probe_isolated" />
+        <service
+            android:name=".NetworkProbeService"
+            android:exported="false"
+            android:isolatedProcess="true"
+            android:process=":probe_network" />
+        <service
+            android:name=".ProcessProbeService"
+            android:exported="false"
+            android:isolatedProcess="true"
+            android:process=":processprobe" />
+        <service android:name=".PtyProbeService" android:exported="false"
+            android:isolatedProcess="true" android:process=":ptyprobe" />
+    </application>
+</manifest>

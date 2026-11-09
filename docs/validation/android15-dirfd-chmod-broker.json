@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "scope": "Standalone native workspace broker over SOCK_SEQPACKET",
+  "platform": "Android 15 ARM64",
+  "uid": 2000,
+  "exit_code": 0,
+  "binary_sha256": "ce42af3491f581c68ba30d025a718b6dc3f9ac0bed7a6dc15b4f7e48bf749c5c",
+  "test_source_sha256": "30c4dcb7170092506814526d5b3556de9bca7f0ccf4ac1af53817e9e137abb0e",
+  "raw_sha256": "7c791b88f4bcaa65681dec4575431d8fd2860ff02b95cc6c6c909c7b2bd781bc",
+  "verified": [
+    "Nested getdents64/openat/fstatat/unlinkat traversal removed originals after parent rename; old-name replacement remained intact.",
+    "Absolute paths ignored invalid directory handles. Bad handles, regular-file parents, wrong removal flags and attempted root escape were rejected.",
+    "Final symlink removal left the externally referenced sentinel intact.",
+    "Path chmod set 000 via a directory-relative managed alias and restored 0600 through an absolute alternate name. Both saw the same inode and link count.",
+    "Invalid mode, missing target, invalid handle and attempts to chmod through outside symlinks were rejected without changing sentinel mode."
+  ],
+  "skipped": [
+    "Existing FIFO rejection fixture: mkfifo returned EACCES before broker dispatch."
+  ],
+  "device_cleanup": {
+    "unique_directory_created": true,
+    "remote_sha256_matched": true,
+    "exact_directory_removed": true,
+    "absent_checked": true,
+    "no_install_or_instrumentation": true
+  },
+  "app_guest_execution_measured": false
+}

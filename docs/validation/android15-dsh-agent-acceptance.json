@@ -1,0 +1,41 @@
+{
+  "schema_version": 1,
+  "status": "passed",
+  "real_controller": {
+    "status": "passed",
+    "terminal_summary": "passed",
+    "source_sha256": "21121842602d14f135fbbb3080c1b35b9d19b0c37a8ee919aa70e11841095aa2",
+    "preflight": {
+      "expected": 59,
+      "passed": 59,
+      "failed": 0,
+      "started": 0,
+      "not_started": 0
+    },
+    "agent": {
+      "expected": 4,
+      "passed": 4,
+      "failed": 0,
+      "started": 0,
+      "not_started": 0
+    },
+    "agent_cases": {
+      "linux_dsh_agent_prepare": "passed",
+      "linux_dsh_agent_model_file_shell": "passed",
+      "linux_dsh_agent_restart_resume": "passed",
+      "linux_dsh_agent_cancel_active_turn": "passed"
+    },
+    "confirmed_receipts": 1,
+    "controller_removed_forwards": 1
+  },
+  "supplied_apk_sha256": {
+    "application": "8df13713d1a40bbb1bd5fc53e71e5e4f3802c47cba03ba9d0aa5f19137800510",
+    "instrumentation": "713c4dd6e3e039be54c89bfcb74e87f906360cfe9f4ab7b56bf188059310e281"
+  },
+  "cleanup": {
+    "status": "verified",
+    "workspace_projects_remaining": 0,
+    "temporary_imports_remaining": 0,
+    "owned_adb_forwards_remaining": 0
+  }
+}

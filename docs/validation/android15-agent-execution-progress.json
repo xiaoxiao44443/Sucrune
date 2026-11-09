@@ -1,0 +1,637 @@
+{
+  "schema_version": 1,
+  "environment": "Android 15/API 35, ARM64, 4 KiB pages; non-debuggable application on physical device; foreground for Linux suite",
+  "interpretation": "Every instrumentation run is separate. Do not add repeated cases or treat an observed capability denial as supported. Numeric DNS addresses are intentionally not recorded.",
+  "linux_runs": [
+    {
+      "source": "linux-network-first.txt",
+      "bytes": 40899,
+      "sha256": "3fee68e9d6cca902858ccb359c10d0368756ee8187f94c8c24e2bf1fc2711ead",
+      "code": 0,
+      "expected_tests": 33,
+      "failed": 1,
+      "passed": 32,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_interactive_roundtrip_eof",
+        "linux_node_interactive_empty_cancel",
+        "linux_node_interactive_empty_timeout",
+        "linux_node_interactive_guest_closes_stdin",
+        "linux_node_network_default_denied",
+        "linux_node_network_tcp_stream",
+        "linux_node_network_refused",
+        "linux_node_network_cancel_listener",
+        "linux_node_parallel_projects"
+      ],
+      "failures": [
+        {
+          "case": "linux_node_network_http_keepalive",
+          "state": "exited",
+          "exit_code": 1,
+          "native_stage": "process_exit_group",
+          "last_unsupported_syscall": 207
+        }
+      ]
+    },
+    {
+      "source": "linux-network-flock-second.txt",
+      "bytes": 48099,
+      "sha256": "a39e26634812846fa8d082225cbd51d35d7ffd099aaecbff6502f6e0ecb54f27",
+      "code": 0,
+      "expected_tests": 39,
+      "failed": 1,
+      "passed": 38,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_interactive_roundtrip_eof",
+        "linux_node_interactive_empty_cancel",
+        "linux_node_interactive_empty_timeout",
+        "linux_node_interactive_guest_closes_stdin",
+        "linux_node_network_default_denied",
+        "linux_node_network_tcp_stream",
+        "linux_node_network_http_keepalive",
+        "linux_node_network_refused",
+        "linux_node_network_cancel_listener",
+        "linux_node_parallel_projects",
+        "linux_dsh_profile_prepare",
+        "linux_dsh_profile_install_bundle",
+        "linux_dsh_sdk_minimal_eof",
+        "linux_dsh_sdk_initialize_shutdown",
+        "linux_dsh_native_process_report"
+      ],
+      "failures": [
+        {
+          "case": "linux_dsh_native_flock_conflict_release",
+          "state": "exited",
+          "exit_code": 1,
+          "native_stage": "process_exit_group",
+          "last_unsupported_syscall": 82
+        }
+      ]
+    },
+    {
+      "source": "linux-network-secrets-third.txt",
+      "bytes": 44507,
+      "sha256": "57ed12dbf237c036d659e937b4ea493306e6dd1125a5da512f852fcebcf37a21",
+      "code": -1,
+      "expected_tests": 41,
+      "failed": 0,
+      "passed": 41,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_interactive_roundtrip_eof",
+        "linux_node_interactive_empty_cancel",
+        "linux_node_interactive_empty_timeout",
+        "linux_node_interactive_guest_closes_stdin",
+        "linux_node_secret_output_events",
+        "linux_node_secret_cancel_cleanup",
+        "linux_node_network_default_denied",
+        "linux_node_network_tcp_stream",
+        "linux_node_network_http_keepalive",
+        "linux_node_network_refused",
+        "linux_node_network_cancel_listener",
+        "linux_node_parallel_projects",
+        "linux_dsh_profile_prepare",
+        "linux_dsh_profile_install_bundle",
+        "linux_dsh_sdk_minimal_eof",
+        "linux_dsh_sdk_initialize_shutdown",
+        "linux_dsh_native_process_report",
+        "linux_dsh_native_flock_conflict_release"
+      ],
+      "failures": []
+    },
+    {
+      "source": "linux-dns-first.txt",
+      "bytes": 53643,
+      "sha256": "04cb56d14b5a0eb923932c343edb9cf726867922dab4c2a716d1dc784cd9fd68",
+      "code": 0,
+      "expected_tests": 37,
+      "failed": 3,
+      "passed": 34,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_interactive_roundtrip_eof",
+        "linux_node_interactive_empty_cancel",
+        "linux_node_interactive_empty_timeout",
+        "linux_node_interactive_guest_closes_stdin",
+        "linux_node_udp_multiple_datagrams",
+        "linux_node_network_default_denied",
+        "linux_node_network_tcp_stream",
+        "linux_node_network_http_keepalive",
+        "linux_node_network_refused",
+        "linux_node_network_cancel_listener",
+        "linux_node_parallel_projects"
+      ],
+      "failures": [
+        {
+          "case": "linux_node_glibc_dns_lookup",
+          "state": "exited",
+          "exit_code": 1,
+          "native_stage": "process_exit_group",
+          "last_unsupported_syscall": 167
+        },
+        {
+          "case": "linux_node_cares_dns_records",
+          "state": "exited",
+          "exit_code": 1,
+          "native_stage": "process_exit_group",
+          "last_unsupported_syscall": 291
+        },
+        {
+          "case": "linux_node_outbound_https_certificate",
+          "state": "exited",
+          "exit_code": 1,
+          "native_stage": "process_exit_group",
+          "last_unsupported_syscall": 167
+        }
+      ]
+    },
+    {
+      "source": "linux-dns-trim-second.txt",
+      "bytes": 48920,
+      "sha256": "3c369024b74b42e72ec2c55cec08eadc6434d9fcf6ba7315e2368a0432d1c794",
+      "code": 0,
+      "expected_tests": 37,
+      "failed": 2,
+      "passed": 35,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_interactive_roundtrip_eof",
+        "linux_node_interactive_empty_cancel",
+        "linux_node_interactive_empty_timeout",
+        "linux_node_interactive_guest_closes_stdin",
+        "linux_node_cares_dns_records",
+        "linux_node_udp_multiple_datagrams",
+        "linux_node_network_default_denied",
+        "linux_node_network_tcp_stream",
+        "linux_node_network_http_keepalive",
+        "linux_node_network_refused",
+        "linux_node_network_cancel_listener",
+        "linux_node_parallel_projects"
+      ],
+      "failures": [
+        {
+          "case": "linux_node_glibc_dns_lookup",
+          "state": "exited",
+          "exit_code": 1,
+          "native_stage": "process_exit_group",
+          "last_unsupported_syscall": 167
+        },
+        {
+          "case": "linux_node_outbound_https_certificate",
+          "state": "exited",
+          "exit_code": 1,
+          "native_stage": "process_exit_group",
+          "last_unsupported_syscall": 167
+        }
+      ]
+    },
+    {
+      "source": "linux-dns-fork-bash-third.txt",
+      "bytes": 42109,
+      "sha256": "ec051fdd663877f9229da38edcfe0af4c86876a21be37be50fe0eefb716284d2",
+      "code": 0,
+      "expected_tests": 34,
+      "failed": 1,
+      "passed": 33,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency",
+        "linux_guest_fork_continuation_and_wait",
+        "linux_node_version",
+        "linux_node_javascript",
+        "linux_node_jitless",
+        "linux_node_fs_workflow",
+        "linux_node_esm_argv_unicode",
+        "linux_node_timers_promises",
+        "linux_node_crypto_workflow",
+        "linux_node_worker_shared_atomics",
+        "linux_node_jit_optimization",
+        "linux_node_interactive_roundtrip_eof",
+        "linux_node_interactive_empty_cancel",
+        "linux_node_interactive_empty_timeout",
+        "linux_node_interactive_guest_closes_stdin",
+        "linux_node_glibc_dns_lookup",
+        "linux_node_cares_dns_records",
+        "linux_node_outbound_https_certificate",
+        "linux_node_udp_multiple_datagrams",
+        "linux_node_parallel_projects"
+      ],
+      "failures": [
+        {
+          "case": "linux_gnu_bash_builtins",
+          "state": "exited",
+          "exit_code": 1,
+          "native_stage": "complete",
+          "last_unsupported_syscall": 155
+        }
+      ]
+    },
+    {
+      "source": "linux-fork-broker-bash-pty-first.txt",
+      "bytes": 24537,
+      "sha256": "9d83d1fa882cf29430f549a7e8976b153d856114ee9f34cf4bc9f0eb25dd287f",
+      "code": 0,
+      "expected_tests": 7,
+      "failed": 2,
+      "passed": 5,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_guest_fork_continuation_and_wait",
+        "linux_guest_fork_unlinked_file_and_cwd",
+        "linux_gnu_bash_builtins",
+        "linux_node_pty_load"
+      ],
+      "failures": [
+        {
+          "case": "linux_node_pty_open",
+          "state": "exited",
+          "exit_code": 1,
+          "native_stage": "process_exit_group",
+          "last_unsupported_syscall": 291
+        },
+        {
+          "case": "linux_node_pty_bash",
+          "state": "exited",
+          "exit_code": 1,
+          "native_stage": "process_exit_group",
+          "last_unsupported_syscall": 291
+        }
+      ]
+    },
+    {
+      "source": "linux-fork-exec-hello-first.txt",
+      "bytes": 6148,
+      "sha256": "af347e1053b1329b90abb54de1290e74674c25585dc40d6fb8b965942048d307",
+      "code": -1,
+      "expected_tests": 6,
+      "failed": 0,
+      "passed": 6,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_guest_fork_continuation_and_wait",
+        "linux_guest_fork_unlinked_file_and_cwd",
+        "linux_guest_fork_exec_debian_hello",
+        "linux_gnu_bash_builtins",
+        "linux_node_pty_load"
+      ],
+      "failures": []
+    },
+    {
+      "source": "linux-fork-stop-managedpty-first.txt",
+      "bytes": 19155,
+      "sha256": "f43f1c5ad797f722656f0065c7020f5ca3c699cc9cc474ca8bdb23421d65bca9",
+      "code": 0,
+      "expected_tests": 10,
+      "failed": 1,
+      "passed": 9,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_guest_fork_continuation_and_wait",
+        "linux_guest_fork_unlinked_file_and_cwd",
+        "linux_guest_fork_exec_debian_hello",
+        "linux_fork_cancel_session_lease",
+        "linux_node_spawn_debian_hello_with_pipes",
+        "linux_gnu_bash_builtins",
+        "linux_node_pty_load",
+        "linux_node_pty_open"
+      ],
+      "failures": [
+        {
+          "case": "linux_node_pty_bash",
+          "state": "exited",
+          "exit_code": 1,
+          "native_stage": "process_exit_group",
+          "last_unsupported_syscall": 167
+        }
+      ]
+    },
+    {
+      "source": "linux-fork-pty-session-second.txt",
+      "bytes": 19249,
+      "sha256": "7d7427206c67bf24f768fb4d0fe40fdaadd5a27a63c035affa0891ff40321da8",
+      "code": 0,
+      "expected_tests": 10,
+      "failed": 1,
+      "passed": 9,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_guest_fork_continuation_and_wait",
+        "linux_guest_fork_unlinked_file_and_cwd",
+        "linux_guest_fork_exec_debian_hello",
+        "linux_fork_cancel_session_lease",
+        "linux_node_spawn_debian_hello_with_pipes",
+        "linux_gnu_bash_builtins",
+        "linux_node_pty_load",
+        "linux_node_pty_open"
+      ],
+      "failures": [
+        {
+          "case": "linux_node_pty_bash",
+          "state": "exited",
+          "exit_code": 1,
+          "native_stage": "process_exit_group",
+          "last_unsupported_syscall": 167
+        }
+      ]
+    },
+    {
+      "source": "linux-fork-pty-pselect-third.txt",
+      "bytes": 10775,
+      "sha256": "a926e29f9cf39f4fc9e2b0d245440a6094e37475243d66cc186bd1658b0279e9",
+      "code": -1,
+      "expected_tests": 11,
+      "failed": 0,
+      "passed": 11,
+      "passed_cases": [
+        "linux_import_upstream",
+        "linux_guest_fork_continuation_and_wait",
+        "linux_guest_fork_unlinked_file_and_cwd",
+        "linux_guest_fork_exec_debian_hello",
+        "linux_fork_cancel_session_lease",
+        "linux_node_spawn_debian_hello_with_pipes",
+        "linux_gnu_bash_builtins",
+        "linux_node_spawn_bash_with_connected_tcp",
+        "linux_node_pty_load",
+        "linux_node_pty_open",
+        "linux_node_pty_bash"
+      ],
+      "failures": []
+    }
+  ],
+  "standalone_and_bridge": [
+    {
+      "source": "broker_transport_tests-udp-dns.txt",
+      "bytes": 131,
+      "sha256": "52886b9b4deb9a9b4aba15c920180ad17887082e1966ccdea2fef1114ad40579",
+      "output": "Broker transport: 5/5 groups passed; real SCM_RIGHTS, rejected-right cleanup and bounded waits. No Android isolated-runner claim.",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    },
+    {
+      "source": "broker_transport_tests-v2.txt",
+      "bytes": 131,
+      "sha256": "8c06d4b8acc1257a4e0041e40fa53d628d0d21de2564a91d404b00316b61b04e",
+      "output": "Broker transport: 4/4 groups passed; real SCM_RIGHTS, rejected-right cleanup and bounded waits. No Android isolated-runner claim.",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    },
+    {
+      "source": "broker_transport_tests.txt",
+      "bytes": 162,
+      "sha256": "0cb64676b92ab64e32f4ab9f26cc4fcf2cd4cd3878e216edde0cc1dd7ec7d85c",
+      "output": "native/broker_transport_tests.c:109: sucrune_broker_receive_response(channel[1], operation, &actual, mode == 8U ? NULL : &received_fd, 1000) == -EPROTO errno=88",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    },
+    {
+      "source": "credential-bridge-synthetic-first.txt",
+      "bytes": 2161,
+      "sha256": "5edb7c7fd8f56be08b4150ba47ffd11da2657445ae42a13527d537ac2dcf6b8a",
+      "app_passed": 1,
+      "synthetic_only": true,
+      "host_ack": true,
+      "forward_removed": true,
+      "scope": "Application instrumentation and host bridge, synthetic value only"
+    },
+    {
+      "source": "dns-proxy-standalone.txt",
+      "bytes": 79,
+      "sha256": "87220dbfccdac3c99838fe52428fbe1f972fc73b29bf0e0ed59890961b4b484d",
+      "output": "{\"suite\":\"dns-proxy\",\"scope\":\"fake-resolver-loopback\",\"passed\":9,\"skipped\":0}",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    },
+    {
+      "source": "dns-system-reference.txt",
+      "bytes": 123,
+      "sha256": "21448d455ac40df8c020832b8d408ed9899a3754a7a8d79c9e3a2fe6f8b82332",
+      "output": "uid=2000 query_check=0 type=1 type_error=0 timeout_error=0 poll=1 flags=17 collect=67 rcode=0 id_match=1 answer_check=-71",
+      "scope": "ADB shell reference process, UID 2000 printed in raw output"
+    },
+    {
+      "source": "dns-trailer-standalone.txt",
+      "bytes": 79,
+      "sha256": "87220dbfccdac3c99838fe52428fbe1f972fc73b29bf0e0ed59890961b4b484d",
+      "output": "{\"suite\":\"dns-proxy\",\"scope\":\"fake-resolver-loopback\",\"passed\":9,\"skipped\":0}",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    },
+    {
+      "source": "dns_proxy_tests-udp-dns.txt",
+      "bytes": 79,
+      "sha256": "87220dbfccdac3c99838fe52428fbe1f972fc73b29bf0e0ed59890961b4b484d",
+      "output": "{\"suite\":\"dns-proxy\",\"scope\":\"fake-resolver-loopback\",\"passed\":9,\"skipped\":0}",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    },
+    {
+      "source": "network_broker_tests-udp-dns.txt",
+      "bytes": 93,
+      "sha256": "856d033238e03b601191b7da21d267096d1b37d180b7b435a119fdb21051528d",
+      "output": "Network broker: 8/8 groups passed; no Android isolated-runner or Internet capability claim.",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    },
+    {
+      "source": "network_broker_tests-udp-plain.txt",
+      "bytes": 93,
+      "sha256": "856d033238e03b601191b7da21d267096d1b37d180b7b435a119fdb21051528d",
+      "output": "Network broker: 8/8 groups passed; no Android isolated-runner or Internet capability claim.",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    },
+    {
+      "source": "network_broker_tests-v2.txt",
+      "bytes": 93,
+      "sha256": "b019495c168c19599017927d09c5d7713a4fa789320c142cdd8d73627f1b17e9",
+      "output": "Network broker: 5/5 groups passed; no Android isolated-runner or Internet capability claim.",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    },
+    {
+      "source": "network_broker_tests.txt",
+      "bytes": 93,
+      "sha256": "b019495c168c19599017927d09c5d7713a4fa789320c142cdd8d73627f1b17e9",
+      "output": "Network broker: 5/5 groups passed; no Android isolated-runner or Internet capability claim.",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    },
+    {
+      "source": "process-capability-first.txt",
+      "bytes": 9225,
+      "sha256": "ef27c22842c6091a6d94b165354ae3aa87e1305c170efe7e87db236902292b9a",
+      "detail": "See android15-agent-network-progress.json",
+      "scope": "Dedicated installed ordinary manager plus isolated service and packaged runner, no guest continuation"
+    },
+    {
+      "source": "workspace-flock-standalone.txt",
+      "bytes": 441,
+      "sha256": "aa8727172a2682e2fe6b9b55d6f77cba31bcd390df38552e88262936f2b76beb",
+      "output": "SKIP FIFO rejection subcase: platform denied fixture mkfifo (errno=13); broker FIFO handling was not exercised.\r\nworkspace broker boundaries, access/readlink queries, real flock conflict/shared/release, 64 resources, shared append/nonblock flags, directory reads, host nonblock safeguard, positioned IO, exec commit, rename and completion passed\r\nSkipped subcases: 1 (FIFO fixture creation is reported separately, never counted as a pass).",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    },
+    {
+      "source": "workspace_broker_tests-udp-dns.txt",
+      "bytes": 441,
+      "sha256": "aa8727172a2682e2fe6b9b55d6f77cba31bcd390df38552e88262936f2b76beb",
+      "output": "SKIP FIFO rejection subcase: platform denied fixture mkfifo (errno=13); broker FIFO handling was not exercised.\r\nworkspace broker boundaries, access/readlink queries, real flock conflict/shared/release, 64 resources, shared append/nonblock flags, directory reads, host nonblock safeguard, positioned IO, exec commit, rename and completion passed\r\nSkipped subcases: 1 (FIFO fixture creation is reported separately, never counted as a pass).",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    },
+    {
+      "source": "workspace_broker_tests-v2.txt",
+      "bytes": 405,
+      "sha256": "5bc9095eadd3ea59465cff648669ed851b3ec6ac095f77533f43cdfd89dcf0ef",
+      "output": "SKIP FIFO rejection subcase: platform denied fixture mkfifo (errno=13); broker FIFO handling was not exercised.\r\nworkspace broker boundaries, access/readlink queries, 64 resources, shared append/nonblock flags, directory reads, host nonblock safeguard, positioned IO, exec commit, rename and completion passed\r\nSkipped subcases: 1 (FIFO fixture creation is reported separately, never counted as a pass).",
+      "scope": "Standalone native component check, no application-identity execution established by this log"
+    }
+  ],
+  "milestones": {
+    "public_tls": "No credential: official Linux Node validated TLSv1.3 certificate chain and api.deepseek.com hostname, received HTTP 401. glibc getaddrinfo and c-ares A/AAAA plus negative lookup passed.",
+    "kernel_fork_and_exec": "ARM64 COW continuation inherited TLS/x18/FPSIMD. Real fork kept the unlinked file/OFD and independent cwd. Missing exec left child live; next exec loaded a sealed snapshot of the original Debian hello ELF and glibc interpreter. Kernel parent wait returned exit 0.",
+    "node_and_bash": "Debian Bash 5.2.15(1)-release did file redirection and readback. Official Node child_process.spawn ran Debian hello and delivered exit, close, and exact stdout.",
+    "cancel": "Cancellation killed the owned top runner, specifically reaped the recorded child session leader, observed ECHILD, drained four barriers, and reacquired the same kernel flock.",
+    "pty": "Original node-pty loaded, opened a real PTY pair with manager-held slave, exchanged both directions, and resized; see android15-pty-capability.json for separate device measurements.",
+    "terminal_and_network_fork": {
+      "source": "linux-fork-pty-pselect-third.txt",
+      "passes": 11,
+      "failures": 0,
+      "tty": "Original node-pty started Debian GNU Bash, exchanged two command rounds, preserved shell variables and PID, and reported exit 7.",
+      "tcp": "Bash wrote to a connected TCP descriptor inherited through fork and exec. Node subsequently wrote to the same connection."
+    }
+  },
+  "version": {
+    "name": "0.8.0-agent-dev",
+    "code": 8,
+    "min_sdk": 29,
+    "target_sdk": 37
+  },
+  "evidence_scopes": {
+    "linux_runs": "Application instrumentation on physical Android 15 (API 35), ARM64, 4 KiB pages, non-debuggable validation build. The Linux runner executes under an isolated UID. Counts apply separately to each listed run.",
+    "standalone_and_bridge": "Includes standalone components, an isolated process mechanism probe and a synthetic credential bridge. See the individual scope field. None is counted in the 11-case application suite.",
+    "pty_capability": "The separate dedicated manager/isolated-service measurements, including denied slave FD transfers, are recorded in android15-pty-capability.json.",
+    "full_agent": "The 11-case suite sent no authenticated model request. A real DSH model, tool, project-artifact and session-resume workflow requires a separate acceptance record."
+  },
+  "fork_session_component": {
+    "source": "uid2000.json",
+    "scope": "Standalone workspace broker executable under Android shell UID 2000",
+    "receipt_sha256": "e69997aca5dd2a4acfbf4b853a8bd66e8abcbe2c5d6a8c4b68f2615f46610866",
+    "binary_sha256": "f1e0d4187d23a84cd9e2384e9137cec86502283cc57c2b93e84c1134163ba630",
+    "uid": 2000,
+    "skipped_fifo_fixture_errno": 13,
+    "remote_scratch_absent": true,
+    "counted_in_application_suite": false
+  }
+}

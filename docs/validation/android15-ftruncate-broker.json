@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "scope": "Android 15 ARM64 standalone filesystem broker over SOCK_SEQPACKET",
+  "uid": 2000,
+  "exit_code": 0,
+  "binary_sha256": "8836536f9328d792a0abd5b4c9721a0970b73834e5d3909e281bc6ea2a3940aa",
+  "test_source_sha256": "3a006d705eb30898119c3c7c9226ab50de1a441b2b36707aa3d6cc817a67dcce",
+  "raw_sha256": "7c791b88f4bcaa65681dec4575431d8fd2860ff02b95cc6c6c909c7b2bd781bc",
+  "checks": [
+    "A writable regular FD shared its smaller and larger size across three hard-linked names and an independent broker session.",
+    "Truncation preserved the current OFD offset. Growth produced zero bytes in the new range; a zero-length write after truncating to zero did not extend the file.",
+    "A forked broker session retained the same OFD offset and exposed the new zero byte in its parent session.",
+    "Negative length returned EINVAL; an invalid FD returned EBADF; read-only and directory FDs were rejected.",
+    "The 256 MiB limit was accepted with a zero final byte and fewer allocated blocks than logical size; 256 MiB plus one and INT64_MAX returned EFBIG with original content size preserved."
+  ],
+  "skipped": [
+    "Pre-existing FIFO fixture: device denied mkfifo with errno 13; FIFO handling not exercised."
+  ],
+  "device_cleanup": {
+    "unique_directory_created": true,
+    "device_binary_hash_verified": true,
+    "removed": true,
+    "absence_verified": true,
+    "apk_install_or_instrumentation": false
+  },
+  "app_node_case": {
+    "source_sha256": "e76d632e23cd75b12f6dcfd186c04198751a3402154dad2ebee564cbc8300a32",
+    "compiled": "Kotlin 2.2.10, JVM17, -Werror with actual validation RuntimeClient",
+    "executed_in_this_measurement": false
+  }
+}

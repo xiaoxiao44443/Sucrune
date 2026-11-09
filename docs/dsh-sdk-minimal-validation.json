@@ -1,0 +1,168 @@
+{
+  "schema_version": 1,
+  "role": "Pinned fixture and source-derived acceptance design; not an Android execution success record",
+  "official_package": "@deepseek-ai/dsh@0.2.2-rc.1",
+  "source_commit": "fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159",
+  "sources": [
+    "https://registry.npmjs.org/@deepseek-ai/dsh/0.2.2-rc.1",
+    "https://registry.npmjs.org/@deepseek-ai/dsh-sdk-minimal/0.2.2-rc.1",
+    "https://registry.npmjs.org/@deepseek-ai/dsh-sdk-app/0.2.2-rc.1",
+    "https://registry.npmjs.org/@deepseek-ai/dsh-cmdline/0.2.2-rc.1",
+    "https://github.com/deepseek-ai/deepseek-harness/tree/fcc0ad462172522aaf5c93a7b2e01f6b9f0b0159"
+  ],
+  "preparation": {
+    "profile": "SdkMinimal",
+    "command": "pwsh -File scripts/prepare-dsh-rootfs.ps1 -Profile SdkMinimal -Offline -Bundle -OutputDirectory <new-empty-directory>",
+    "bundle_existing_assets": "pwsh -File scripts/prepare-dsh-rootfs.ps1 -Profile SdkMinimal -Offline -BundleOnly -OutputDirectory <materialized-directory>",
+    "assets": ".build/dsh-rootfs-sdk-minimal",
+    "index": ".build/dsh-rootfs-sdk-minimal-index/manifest.json",
+    "packages": 212,
+    "files": 24424,
+    "file_bytes": 367519382,
+    "unique_blobs": 5722,
+    "unique_blob_bytes": 249898962,
+    "excluded_packages_from_full": 442,
+    "omitted_files_within_selected_packages": 0,
+    "root_seeds": [
+      "all 28 CliSmoke package paths",
+      "node_modules/@deepseek-ai/dsh-sdk-minimal",
+      "node_modules/@deepseek-ai/dsh-http-proxy",
+      "node_modules/@deepseek-ai/dsh-cmdline"
+    ],
+    "closure": "Recursively resolve exact locked dependencies, peers, and target-compatible optional dependencies using nearest npm node_modules paths. Installed optional peers are retained. Every selected package retains every regular tar file, including development resources and foreign prebuilds shipped in the same package.",
+    "root_exception": "The original dsh public CLI package is retained unchanged but its unrelated Web/ACP/optional profile dependency roots are not expanded. This is a selected official-profile fixture, not a complete npm installation of every DSH profile.",
+    "evidence": [
+      "Every package tarball checked against pinned official npm SHA512 SRI",
+      "All 24424 materialized path/mode/bytes/SHA256 rows match separately generated index",
+      "Closure independently checked against the materialized npm package manifests without loading package code"
+    ],
+    "large_packages": [
+      {
+        "name": "@deepseek-ai/libreoffice-kit-wasm",
+        "bytes": 152357942
+      },
+      {
+        "name": "node-pty",
+        "bytes": 26877238
+      },
+      {
+        "name": "@img/sharp-libvips-linux-arm64",
+        "bytes": 18336518
+      }
+    ]
+  },
+  "eof_profile_acceptance": {
+    "argv": [
+      "/usr/bin/node",
+      "/opt/dsh/node_modules/@deepseek-ai/dsh/lib/bin.js",
+      "sdk-minimal"
+    ],
+    "cwd": "/workspace/dsh-test-work",
+    "stdin": "A finite, empty input stream that reaches EOF",
+    "environment": [
+      "HOME=/workspace/dsh-test-home",
+      "DSH_HOME=/workspace/dsh-test-home/.dsh",
+      "TMPDIR=/workspace/dsh-tmp",
+      "NARB_NATIVE_CACHE_DIR=/workspace/dsh-native-cache",
+      "DSH_TELEMETRY_DISABLED=1",
+      "LC_ALL=C.UTF-8",
+      "LANG=C.UTF-8",
+      "LD_LIBRARY_PATH=/lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu"
+    ],
+    "memory_policy": "linux-jit",
+    "preconditions": "Use a fresh dedicated runtime project and fresh work/home/tmp directories; do not forward inherited host credentials, proxy configuration or user .env files. No prompt, session/query, session/prompt or tool execution is issued.",
+    "expected_exit": 0,
+    "stdout": "No CLI-help or version marker is expected. This is the real stdio profile, not a mock profile or patched entrypoint.",
+    "stderr": "Must not contain loader/startup failure, module-not-found or native binding failure; preserve diagnostics on failure.",
+    "why_eof_is_meaningful": "sdk-app's successful action invokes exitOnStdinEnd. That callback waits for launcher appReady; runProfile commits appReady only after boot and host setup succeed, the root fiber is active and loader exists. EOF then requests bounded shutdown and root disposal. sdk-minimal's official agent-loop configuration starts with agents: [].",
+    "artifacts": [
+      {
+        "path": "/workspace/dsh-test-home/.dsh/profiles/sdk-minimal/package.json",
+        "assert": "JSON name == dsh-profile-sdk-minimal, private == true, dsh.profile.bundles exactly [@deepseek-ai/dsh-sdk-minimal]"
+      },
+      {
+        "path": "/workspace/dsh-test-home/.dsh/profiles/sdk-minimal/cordis.yml",
+        "assert": "Regular, nonempty profile root created by the original launcher; initial source template is a comment plus empty YAML list"
+      },
+      {
+        "path": "/workspace/dsh-test-home/.dsh/profiles/sdk-minimal/cordis.patch.yml",
+        "assert": "Regular initialized profile patch file exists"
+      },
+      {
+        "path": "/workspace/dsh-test-home/.dsh/profiles/sdk-minimal/pnpm-workspace.yaml",
+        "assert": "Regular initialized profile workspace file exists; this does not mean pnpm ran"
+      }
+    ],
+    "not_established": [
+      "Full Web profile",
+      "Agent task execution",
+      "PTY/fork/exec support",
+      "Nested sandbox confinement",
+      "npm/pnpm installation inside Android",
+      "Model or credential access"
+    ]
+  },
+  "later_handshake": {
+    "requires": "Bidirectional controlled stdio: await initialize reply before sending shutdown; finite prequeued lines/EOF can race asynchronous handlers.",
+    "initialize": {
+      "jsonrpc": "2.0",
+      "id": 1,
+      "method": "initialize",
+      "params": {
+        "cwd": "/workspace/dsh-test-work",
+        "provider": "deepseek-official",
+        "model": "deepseek-flash"
+      }
+    },
+    "expected": {
+      "serverInfo": {
+        "name": "deepseek-harness-sdk-runtime",
+        "version": "0.0.1"
+      }
+    },
+    "shutdown": {
+      "jsonrpc": "2.0",
+      "id": 2,
+      "method": "shutdown",
+      "params": {}
+    },
+    "no_model_request_reason": "initialize waits for loader settlement and calls resolveCallConfig/resolveModel metadata. The official listing cache does not call its fetch loader when no credential exists. Generation and resolveAuth are separate paths; do not invoke prompt/query. This is source-derived and still requires guest verification."
+  },
+  "bundle_protocol": {
+    "format": "sucrune-file-bundle-v1",
+    "compression": "gzip",
+    "magic_ascii": "SUCRUNE-BUNDLE-1\n",
+    "magic_bytes": 17,
+    "length_prefix": "uint32 little endian: number of UTF-8 JSON index bytes immediately following",
+    "index": "schema_version=1, format, name, guest_prefix=/opt/dsh, file_count, total_bytes, package_count, source_manifest_sha256, files[]",
+    "file_record": "path is absolute guest /opt/dsh/...; mode is POSIX permission integer 0..511; bytes is exact raw length; sha256 is lowercase hex",
+    "payload": "Consecutive raw file bytes in index.files order. No padding, directory entries, file headers or separators. Require exact decompressed EOF after the final file and complete gzip CRC validation.",
+    "limits": "Index <=16 MiB; <=100000 files; each file <=256 MiB; total payload <=2 GiB; compressed asset <=256 MiB",
+    "integrity": "bundle.json records compressed bytes/SHA256, raw JSON index bytes/SHA256, original assets manifest SHA256 and counts. An installer report should identify index_sha256 and actual validated counts.",
+    "publication": "Validate unique rooted paths, deny links/special files, stream/hash to random same-parent temporary files, atomically rename only validated files, and map original execute bits to 0700 or default 0600. No setuid/setgid or arbitrary archive permissions."
+  },
+  "first_boot_capabilities": {
+    "needed": [
+      "Read and write regular files/directories, stat/access/readdir/realpath",
+      "ESM/CJS resolution and the actual require-builtin N-API addon",
+      "Node asynchronous file operations, threads/futex/event loop, pipes/EOF, timers, random bytes",
+      "SIGINT/SIGTERM handler registration and bounded disposal"
+    ],
+    "lazy_until_feature_used": [
+      "node-pty forkpty and terminal ioctls",
+      "Sharp native image processing",
+      "sandbox-local bwrap/Landlock probing",
+      "Koffi Linux subprocess helpers"
+    ],
+    "web_followup": "Original bin.js web --no-open --host 127.0.0.1 --port 0 needs network sockets/listen/accept plus live config and credential watchers. Keep all Web frontend assets. Fresh empty isolated home and DSH_TELEMETRY_DISABLED=1; no login or chat request. Await dsh web: URL only after startup audit, then verify local HTTP and graceful shutdown."
+  },
+  "bundle_artifact": {
+    "asset": ".build/dsh-rootfs-sdk-minimal/rootfs.bundle.gz",
+    "bytes": 94883559,
+    "sha256": "95c99e5cfd9af26f33b8851eac3fece35de0a98b8cb1114593db9d624f24e0f0",
+    "index_bytes": 4812217,
+    "index_sha256": "92e8171e478ffde36beea8bf82510b32daaaa10694a5d607f2842425e26e9bd9",
+    "decompressed_bytes": 372331620,
+    "validation": "Independent host Node standard-library streaming parser checked every raw file SHA256, every path/mode/size against original manifest, compressed SHA256, exact decompressed EOF and gzip CRC; no DSH package code executed."
+  }
+}

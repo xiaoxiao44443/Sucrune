@@ -1,0 +1,187 @@
+{
+  "schema_version": 1,
+  "suite": "Debian bookworm ARM64",
+  "packages": [
+    {
+      "package": "aapt",
+      "version": "1:10.0.0+r36-10",
+      "filename": "pool/main/a/android-platform-frameworks-base/aapt_10.0.0+r36-10_arm64.deb",
+      "size": 507812,
+      "sha256": "ec2d2e6ae414ac6eae52626e74715af5d7402f4b24f329c94f706934a15034fb"
+    },
+    {
+      "package": "android-framework-res",
+      "version": "1:10.0.0+r36-10",
+      "filename": "pool/main/a/android-platform-frameworks-base/android-framework-res_10.0.0+r36-10_all.deb",
+      "size": 13912496,
+      "sha256": "267dad38b2e01b2705bd106023cfb5e6410175ebe35c60f3186eef521248bc6b"
+    },
+    {
+      "package": "android-libaapt",
+      "version": "1:10.0.0+r36-10",
+      "filename": "pool/main/a/android-platform-frameworks-base/android-libaapt_10.0.0+r36-10_arm64.deb",
+      "size": 187968,
+      "sha256": "a784a933ce7219920116a23badae2dfb6373c3c252c699654ff7756f936579c2"
+    },
+    {
+      "package": "android-libandroidfw",
+      "version": "1:10.0.0+r36-10",
+      "filename": "pool/main/a/android-platform-frameworks-base/android-libandroidfw_10.0.0+r36-10_arm64.deb",
+      "size": 132052,
+      "sha256": "3833d44f55b1c63b985455ada8f08dc15a7a0cca7f22ebf11096515a9dd29a4b"
+    },
+    {
+      "package": "android-libbacktrace",
+      "version": "1:29.0.6-28",
+      "filename": "pool/main/a/android-platform-tools/android-libbacktrace_29.0.6-28_arm64.deb",
+      "size": 117748,
+      "sha256": "354de7435e9d4c52b2db26648629c8768fa9b88df61b430f87bfc204d7cb446f"
+    },
+    {
+      "package": "android-libbase",
+      "version": "1:29.0.6-28",
+      "filename": "pool/main/a/android-platform-tools/android-libbase_29.0.6-28_arm64.deb",
+      "size": 42896,
+      "sha256": "cae49d095f25ab9fbadf2c062123885e87ac5bf861e2ab415510e5b60575decd"
+    },
+    {
+      "package": "android-libcutils",
+      "version": "1:29.0.6-28",
+      "filename": "pool/main/a/android-platform-tools/android-libcutils_29.0.6-28_arm64.deb",
+      "size": 33424,
+      "sha256": "ac1565d9f4b4c1c8a3e50d577e785086856c8928089e0bb857adb9a5c52e4839"
+    },
+    {
+      "package": "android-liblog",
+      "version": "1:29.0.6-28",
+      "filename": "pool/main/a/android-platform-tools/android-liblog_29.0.6-28_arm64.deb",
+      "size": 38072,
+      "sha256": "d21c4868a3118dd24feb5b7f82b7e1eaaf3c85544a1f26cd94fb0f9d9def9108"
+    },
+    {
+      "package": "android-libutils",
+      "version": "1:29.0.6-28",
+      "filename": "pool/main/a/android-platform-tools/android-libutils_29.0.6-28_arm64.deb",
+      "size": 57516,
+      "sha256": "22148b383dd323d9d431571eb94247c7aef07c9503f9c0f8e2af4d553892d8bf"
+    },
+    {
+      "package": "android-libziparchive",
+      "version": "1:29.0.6-28",
+      "filename": "pool/main/a/android-platform-tools/android-libziparchive_29.0.6-28_arm64.deb",
+      "size": 36172,
+      "sha256": "bcec60dac69fa6bd1a1124a78ae1a8aeec5e95ef4ea2cda27960bfe753664cc4"
+    },
+    {
+      "package": "libbsd0",
+      "version": "0.11.7-2",
+      "filename": "pool/main/libb/libbsd/libbsd0_0.11.7-2_arm64.deb",
+      "size": 115116,
+      "sha256": "ef00f132ddd268ee67d756998723ee18543db27ab34930c0a9f1cff75cf55382"
+    },
+    {
+      "package": "libbz2-1.0",
+      "version": "1.0.8-5+b1",
+      "filename": "pool/main/b/bzip2/libbz2-1.0_1.0.8-5+b1_arm64.deb",
+      "size": 47452,
+      "sha256": "d3a96ece03326498b39ff093a76800dfcbcb1d4049d6ae6e9f6fa1aa7a590ad6"
+    },
+    {
+      "package": "libexpat1",
+      "version": "2.5.0-1+deb12u2",
+      "filename": "pool/main/e/expat/libexpat1_2.5.0-1+deb12u2_arm64.deb",
+      "size": 86280,
+      "sha256": "8dc1976735acf825e3a922d82f171e20feec7394da2b8c616091983e38706275"
+    },
+    {
+      "package": "libmd0",
+      "version": "1.0.4-2",
+      "filename": "pool/main/libm/libmd/libmd0_1.0.4-2_arm64.deb",
+      "size": 29400,
+      "sha256": "99a8c7dd591fae9fb37d8bf8dfdffa850e207fa405b3198c5b24711a5f972381"
+    },
+    {
+      "package": "libpng16-16",
+      "version": "1.6.39-2+deb12u5",
+      "filename": "pool/main/libp/libpng1.6/libpng16-16_1.6.39-2+deb12u5_arm64.deb",
+      "size": 270448,
+      "sha256": "69aba3963ddfb11b98e5bf4b0d022f76b797436568884b10f2da32e0f4b8c2dd"
+    },
+    {
+      "package": "libprotobuf-lite32",
+      "version": "3.21.12-3+deb12u1",
+      "filename": "pool/main/p/protobuf/libprotobuf-lite32_3.21.12-3+deb12u1_arm64.deb",
+      "size": 240664,
+      "sha256": "c854436ba2ebc40976fda685252908deeb6d41ce6a79e2b42d501ae8f6bcce1c"
+    },
+    {
+      "package": "libzopfli1",
+      "version": "1.0.3-1",
+      "filename": "pool/main/z/zopfli/libzopfli1_1.0.3-1_arm64.deb",
+      "size": 91224,
+      "sha256": "439b03d8369fb65de4b81cdb354562cdf7f8da271bebf026bd83e03bdf195f21"
+    },
+    {
+      "package": "p7zip",
+      "version": "16.02+really26.01+dfsg-0+deb12u1",
+      "filename": "pool/main/p/p7zip/p7zip_16.02+really26.01+dfsg-0+deb12u1_arm64.deb",
+      "size": 403252,
+      "sha256": "9ec323ee2f9540d084d386d7b099aa50cbc88c8e79af2ad370bed93133ce68e2"
+    },
+    {
+      "package": "p7zip-full",
+      "version": "16.02+really26.01+dfsg-0+deb12u1",
+      "filename": "pool/main/p/p7zip/p7zip-full_16.02+really26.01+dfsg-0+deb12u1_arm64.deb",
+      "size": 1281672,
+      "sha256": "4505bf77bc4bf430cc6ab00f1a63064f4ea70cb575008db7fe107f167ac3b5b0"
+    },
+    {
+      "package": "zip",
+      "version": "3.0-13",
+      "filename": "pool/main/z/zip/zip_3.0-13_arm64.deb",
+      "size": 222732,
+      "sha256": "466ba35ece2f7b2dbdae389a36b6b5c7a92cb2de426ec2921682ddec399379f1"
+    },
+    {
+      "package": "zipalign",
+      "version": "1:10.0.0+r36-1",
+      "filename": "pool/main/a/android-platform-build/zipalign_10.0.0+r36-1_arm64.deb",
+      "size": 27948,
+      "sha256": "51a72c132ce2d61839112a7edb1f20cefedff186b427edad6f4cd535cc497ea6"
+    },
+    {
+      "package": "zlib1g",
+      "version": "1:1.2.13.dfsg-1",
+      "filename": "pool/main/z/zlib/zlib1g_1.2.13.dfsg-1_arm64.deb",
+      "size": 82744,
+      "sha256": "52b8b8a145bbe1956bba82034f77022cbef0c3d0885c9e32d9817a7932fe1913"
+    }
+  ],
+  "sdk": [
+    {
+      "source": "build-tools/36.0.0/lib/d8.jar",
+      "bytes": 17998582,
+      "sha256": "4097ff9c46c185c6e7214da7fe9b1befb5adeea5cc9ca349270e0249904f9240"
+    },
+    {
+      "source": "build-tools/36.0.0/lib/apksigner.jar",
+      "bytes": 1100545,
+      "sha256": "3716d9311e55d2b0918a2fd9d54ba9e406c5f6abeea700b287f11259bc163dec"
+    },
+    {
+      "source": "platforms/android-37.0/android.jar",
+      "bytes": 43044472,
+      "sha256": "bf1b4387cc7ca94fc6ef684f040d9d16fbf16248e181819f020736ea2053f177"
+    },
+    {
+      "source": "build-tools/36.0.0/NOTICE.txt",
+      "bytes": 1063288,
+      "sha256": "2df581726e404bf9f5385107b650f6bf7800945348745ea54b7970d98e816b86"
+    },
+    {
+      "source": "platforms/android-37.0/package.xml",
+      "bytes": 18686,
+      "sha256": "cf8d623db9b8fb3112f2a15c6e1d246a85f300e04742c86f51819b998b77a499"
+    }
+  ]
+}

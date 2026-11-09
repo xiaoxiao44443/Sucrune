@@ -1,0 +1,479 @@
+{
+  "schema_version": 1,
+  "audited_at_utc": "2026-11-06T23:45:02.935Z",
+  "status": "passed",
+  "scope": "Read-only final validation APK audit; no installation or device execution by this audit",
+  "version": "0.7.0-linux-dev",
+  "read_only_actual_project": true,
+  "apks": [
+    {
+      "file": "android/probeapp/build/outputs/apk/validation/probeapp-validation.apk",
+      "bytes": 5258600,
+      "sha256": "daf4596ec3442713bb33c729a8841cf73fddb0668d8cd2ddcee3280b0415d821",
+      "v2_signature_verified": true,
+      "certificate_sha256": "adc349405a295e9c24e01908e6f3b9e01dff253fe5da3e11685972e1d524e9ec",
+      "certificate_matches_retained_project_debug_key_and_history": true,
+      "zipalign_check": "zipalign -c -P 16 4: exit 0",
+      "package": "com.sucrune.probe",
+      "version_code": 7,
+      "version_name": "0.7.0-linux-dev",
+      "min_sdk": 29,
+      "target_sdk": 37,
+      "debuggable": false,
+      "debuggable_evidence": "Absent manifest attribute (platform false default) and no aapt application-debuggable flag",
+      "permissions": [
+        "android.permission.INTERNET"
+      ],
+      "extract_native_libs": true,
+      "services": [
+        {
+          "name": "com.sucrune.probe.RuntimeWorkerService",
+          "exported": false,
+          "isolated": true,
+          "process": ":runtime_worker"
+        },
+        {
+          "name": "com.sucrune.probe.AppProbeService",
+          "exported": false,
+          "isolated": false,
+          "process": ":probe_app"
+        },
+        {
+          "name": "com.sucrune.probe.IsolatedProbeService",
+          "exported": false,
+          "isolated": true,
+          "process": ":probe_isolated"
+        },
+        {
+          "name": "com.sucrune.probe.NetworkProbeService",
+          "exported": false,
+          "isolated": true,
+          "process": ":probe_network"
+        }
+      ],
+      "dex_markers_found": [
+        "executePathInteractive",
+        "writeInput",
+        "closeInput",
+        "abortStoppedInput",
+        "stdin_bytes_accepted",
+        "input_end_reason"
+      ]
+    },
+    {
+      "file": "android/probeapp/build/outputs/apk/androidTest/validation/probeapp-validation-androidTest.apk",
+      "bytes": 143607544,
+      "sha256": "10ff1245870b13a3424e882d1f350fc3fc208a5bc95169ba18956da2bf0b8eaf",
+      "v2_signature_verified": true,
+      "certificate_sha256": "adc349405a295e9c24e01908e6f3b9e01dff253fe5da3e11685972e1d524e9ec",
+      "certificate_matches_retained_project_debug_key_and_history": true,
+      "zipalign_check": "zipalign -c -P 16 4: exit 0",
+      "package": "com.sucrune.probe.test",
+      "version_code": null,
+      "version_name": null,
+      "min_sdk": 29,
+      "target_sdk": 37,
+      "debuggable": false,
+      "debuggable_evidence": "Absent manifest attribute (platform false default) and no aapt application-debuggable flag",
+      "permissions": [],
+      "extract_native_libs": true,
+      "services": [],
+      "dex_markers_found": [
+        "linux_node_interactive_roundtrip_eof",
+        "linux_dsh_sdk_initialize_shutdown",
+        "keep_foreground"
+      ]
+    }
+  ],
+  "native_libraries": [
+    {
+      "entry": "lib/arm64-v8a/libsucrune_core.so",
+      "bytes": 2941920,
+      "sha256": "bcc341d7b03620ba0f9801ef680a9b418f759cbef7f3a25d01d4c745a1ce88f3",
+      "compression": "deflate; installed extraction required",
+      "zip_data_offset": 2209434,
+      "stored_data_aligned_16k": null,
+      "matches_stripped_build": true,
+      "elf": {
+        "type": 3,
+        "machine": 183,
+        "interpreter": null,
+        "load_segments": [
+          {
+            "flags": 4,
+            "offset": 0,
+            "address": 0,
+            "bytes": 1389552,
+            "memory_bytes": 1389552,
+            "alignment": 16384
+          },
+          {
+            "flags": 5,
+            "offset": 1389552,
+            "address": 1405936,
+            "bytes": 1159584,
+            "memory_bytes": 1159584,
+            "alignment": 16384
+          },
+          {
+            "flags": 6,
+            "offset": 2549152,
+            "address": 2581920,
+            "bytes": 256824,
+            "memory_bytes": 256824,
+            "alignment": 16384
+          },
+          {
+            "flags": 6,
+            "offset": 2805984,
+            "address": 2855136,
+            "bytes": 133280,
+            "memory_bytes": 33937664,
+            "alignment": 16384
+          }
+        ]
+      }
+    },
+    {
+      "entry": "lib/arm64-v8a/libsucrune_probe.so",
+      "bytes": 618968,
+      "sha256": "66724f128d17b206ef0d3b5155fba9ff08e6fd6a3523fc9f272352a07583b809",
+      "compression": "deflate; installed extraction required",
+      "zip_data_offset": 3373326,
+      "stored_data_aligned_16k": null,
+      "matches_stripped_build": true,
+      "elf": {
+        "type": 3,
+        "machine": 183,
+        "interpreter": null,
+        "load_segments": [
+          {
+            "flags": 5,
+            "offset": 0,
+            "address": 0,
+            "bytes": 613696,
+            "memory_bytes": 613696,
+            "alignment": 16384
+          },
+          {
+            "flags": 6,
+            "offset": 613696,
+            "address": 630080,
+            "bytes": 3032,
+            "memory_bytes": 3032,
+            "alignment": 16384
+          },
+          {
+            "flags": 6,
+            "offset": 616728,
+            "address": 649496,
+            "bytes": 32,
+            "memory_bytes": 1368,
+            "alignment": 16384
+          }
+        ]
+      }
+    },
+    {
+      "entry": "lib/arm64-v8a/libsucrune_runner.so",
+      "bytes": 548024,
+      "sha256": "9908acf97335deb06b56890f254b75eeba9b6e84d107eb951e71e2f274973757",
+      "compression": "deflate; installed extraction required",
+      "zip_data_offset": 3667481,
+      "stored_data_aligned_16k": null,
+      "matches_stripped_build": true,
+      "elf": {
+        "type": 3,
+        "machine": 183,
+        "interpreter": "/system/bin/linker64",
+        "load_segments": [
+          {
+            "flags": 5,
+            "offset": 0,
+            "address": 0,
+            "bytes": 544080,
+            "memory_bytes": 544080,
+            "alignment": 16384
+          },
+          {
+            "flags": 6,
+            "offset": 544128,
+            "address": 560512,
+            "bytes": 1432,
+            "memory_bytes": 1432,
+            "alignment": 16384
+          },
+          {
+            "flags": 6,
+            "offset": 545560,
+            "address": 578328,
+            "bytes": 32,
+            "memory_bytes": 1224,
+            "alignment": 16384
+          }
+        ]
+      }
+    },
+    {
+      "entry": "lib/x86_64/libsucrune_core.so",
+      "bytes": 3143680,
+      "sha256": "dbebd709f0ecea6214a9074b90d4f652a54c20de1fc8fd6c3b6fdcfc5ad9c590",
+      "compression": "deflate; installed extraction required",
+      "zip_data_offset": 3939594,
+      "stored_data_aligned_16k": null,
+      "matches_stripped_build": true,
+      "elf": {
+        "type": 3,
+        "machine": 62,
+        "interpreter": null,
+        "load_segments": [
+          {
+            "flags": 4,
+            "offset": 0,
+            "address": 0,
+            "bytes": 1459660,
+            "memory_bytes": 1459660,
+            "alignment": 16384
+          },
+          {
+            "flags": 5,
+            "offset": 1459712,
+            "address": 1476096,
+            "bytes": 1290656,
+            "memory_bytes": 1290656,
+            "alignment": 16384
+          },
+          {
+            "flags": 6,
+            "offset": 2750368,
+            "address": 2783136,
+            "bytes": 257488,
+            "memory_bytes": 257488,
+            "alignment": 16384
+          },
+          {
+            "flags": 6,
+            "offset": 3007856,
+            "address": 3057008,
+            "bytes": 133168,
+            "memory_bytes": 33910608,
+            "alignment": 16384
+          }
+        ]
+      }
+    },
+    {
+      "entry": "lib/x86_64/libsucrune_probe.so",
+      "bytes": 59088,
+      "sha256": "b90c4a383d5f09b609e8c9e2285fedabbcb9514a1e47b7e6671b49364ef150f8",
+      "compression": "deflate; installed extraction required",
+      "zip_data_offset": 5204588,
+      "stored_data_aligned_16k": null,
+      "matches_stripped_build": true,
+      "elf": {
+        "type": 3,
+        "machine": 62,
+        "interpreter": null,
+        "load_segments": [
+          {
+            "flags": 5,
+            "offset": 0,
+            "address": 0,
+            "bytes": 55504,
+            "memory_bytes": 55504,
+            "alignment": 16384
+          },
+          {
+            "flags": 6,
+            "offset": 55504,
+            "address": 71888,
+            "bytes": 1592,
+            "memory_bytes": 1592,
+            "alignment": 16384
+          },
+          {
+            "flags": 6,
+            "offset": 57096,
+            "address": 89864,
+            "bytes": 0,
+            "memory_bytes": 104,
+            "alignment": 16384
+          }
+        ]
+      }
+    },
+    {
+      "entry": "lib/x86_64/libsucrune_runner.so",
+      "bytes": 8136,
+      "sha256": "699fd0e1e0ecf7d928b8d2daace6e2034632a1da0419449e1d80830ffea1b9dd",
+      "compression": "deflate; installed extraction required",
+      "zip_data_offset": 5226923,
+      "stored_data_aligned_16k": null,
+      "matches_stripped_build": true,
+      "elf": {
+        "type": 3,
+        "machine": 62,
+        "interpreter": "/system/bin/linker64",
+        "load_segments": [
+          {
+            "flags": 5,
+            "offset": 0,
+            "address": 0,
+            "bytes": 5440,
+            "memory_bytes": 5440,
+            "alignment": 16384
+          },
+          {
+            "flags": 6,
+            "offset": 5440,
+            "address": 21824,
+            "bytes": 624,
+            "memory_bytes": 624,
+            "alignment": 16384
+          },
+          {
+            "flags": 6,
+            "offset": 6064,
+            "address": 38832,
+            "bytes": 0,
+            "memory_bytes": 8,
+            "alignment": 16384
+          }
+        ]
+      }
+    }
+  ],
+  "socket_getter_static_checks": [
+    {
+      "library": "lib/arm64-v8a/libsucrune_probe.so",
+      "function": "sucrune_socket_get_name",
+      "address": "0x92da8",
+      "bytes": 432,
+      "sha256": "60af8b21aebf4e821a40666ba4906043c84428091f7c292570a137742d5be416",
+      "packaged_bytes_equal_unstripped_symbol": true,
+      "packaged_arm64_bl_call_sites": [
+        "0x8742c"
+      ]
+    },
+    {
+      "library": "lib/arm64-v8a/libsucrune_probe.so",
+      "function": "sucrune_socket_get_option",
+      "address": "0x92b94",
+      "bytes": 532,
+      "sha256": "ab2cd601436c5a3533676ac6d49ff4bc1fb03632942884fef3eeecf72d7133fa",
+      "packaged_bytes_equal_unstripped_symbol": true,
+      "packaged_arm64_bl_call_sites": [
+        "0x86b30"
+      ]
+    },
+    {
+      "library": "lib/arm64-v8a/libsucrune_runner.so",
+      "function": "sucrune_socket_get_name",
+      "address": "0x83bc8",
+      "bytes": 432,
+      "sha256": "9c83c0e706166117b4cc6708c49028f1b26c98c67e3c6963f230bed30576cac4",
+      "packaged_bytes_equal_unstripped_symbol": true,
+      "packaged_arm64_bl_call_sites": [
+        "0x7ab78"
+      ]
+    },
+    {
+      "library": "lib/arm64-v8a/libsucrune_runner.so",
+      "function": "sucrune_socket_get_option",
+      "address": "0x839b4",
+      "bytes": 532,
+      "sha256": "555360bdeb2c96f2ab86785aff2aae263e829dcbddac67ec574f66048de6462f",
+      "packaged_bytes_equal_unstripped_symbol": true,
+      "packaged_arm64_bl_call_sites": [
+        "0x7a27c"
+      ]
+    }
+  ],
+  "source_sha256": {
+    "native/guest_sockets.c": "0371e8735dd39ef691ab6da330150f96f35e302e900c5b4ad3302cc2f3a43386",
+    "native/guest_sockets.h": "0f971486dd77fc6072dea860130053f1e1b48555c2a8dc478d8d84c4ffe06f29",
+    "native/shell_runtime.c": "a0dd667de9c626c2a8b25b3707510c835981836fd3824035515d05f91cd8b6b2",
+    "native/linux_runner.c": "ce730b533ff1c2ee1e6d9a0debf459aa7b100f638f5878ef86c3a9e108d4ecc5",
+    "native/guest_local_io.c": "13123e5d67f9a68fcdee5ed05695c11d64e2c91055b17f49c47f92561e4e4f9b",
+    "native/workspace_broker.c": "58c78f7573b74299005161fa0dd6bff8c400b4dbd4217cecfa5932252b29e68b",
+    "native/jni.c": "b99e614015d4e35c7925020f368d4bacc49430da67d9e8b1c67f796dd864ebd1",
+    "native/CMakeLists.txt": "6d6d979708034b1669c6c29790c1ff6bbaf53b28b31af3f6fb6852a0a6c8c656",
+    "internal/runtimecore/active_executions.go": "e4ced8451520324a34a1ca270a2f08f15d18f8da51f790936cb446f971787349",
+    "internal/runtimecore/execution.go": "1bb97c9bc282f8bc91c292c366cd54c372c252b657091bcaba4ce7dd24fd5bb3",
+    "internal/runtimecore/service.go": "b74bb31914f91a86f41155f7dab1a823f10b3fa64896b21bbfed5ffa1c8cd90e",
+    "android/probeapp/build.gradle": "ab4e856ce66d90048747bb81259a021184bcee7978e39df68fb45c062beda12e",
+    "android/probeapp/src/main/AndroidManifest.xml": "8727216c1ed271e78150e84e5aed87d8bc11c26b3bbc366b99d6ffe1eae1c3e4",
+    "android/probeapp/src/main/kotlin/com/sucrune/probe/RuntimeClient.kt": "021f4389962ff630e9c784b1dd906f6d8a931dcf8aefc5a6e0c5064553b58ae7",
+    "android/probeapp/src/main/kotlin/com/sucrune/probe/ExecutionInput.kt": "e21b59e81d3f42f58202206acff76971eaab39fcc54e9eb011927d1a0ce054f3",
+    "android/probeapp/src/main/kotlin/com/sucrune/probe/RuntimeWorkerService.kt": "345724a1794c7d209fa4db31f00915e7d0609705d2006e6a44c7683258c6c8f1",
+    "android/probeapp/src/main/kotlin/com/sucrune/probe/NativeProbe.kt": "7be745d813452e51bce1e7fdc8918ccda96cd056577c5ba9fa0c280b78e4d142",
+    "android/probeapp/src/androidTest/kotlin/com/sucrune/probe/tests/NodeInputWorkflows.kt": "9c50b7fabb70ae2a55af8c041d796244b3eb8ec9ba38eb28aa43c44dae460b69",
+    "android/probeapp/src/androidTest/kotlin/com/sucrune/probe/tests/DshProfileChecks.kt": "9a5a26feda34da8445a22b3a399b74000bf8234b6c646c4eeee7f706747d286a",
+    "android/probeapp/src/androidTest/kotlin/com/sucrune/probe/tests/LinuxChecks.kt": "52907b43554e2f188eeec09a221add01e2999d8a495af339623645209cdae28c",
+    "android/probeapp/src/androidTest/kotlin/com/sucrune/probe/tests/ProbeInstrumentation.kt": "a28f70afd76f2a419846bdce174f7b168ebab010afd3a61657d7bbf5884207b9"
+  },
+  "limitations": [
+    "Development signing certificate retained; this is not a production release-signing audit.",
+    "ZIP/ELF 16 KiB alignment is static packaging evidence, not execution on a 16 KiB-page device.",
+    "Source hashes and packaged/unstripped code-byte matching do not constitute a reproducible independent rebuild.",
+    "x86_64 packaging is checked; ARM64 Linux guest execution is not supported on x86_64.",
+    "DEX markers establish included method/string names, not independent verification of the Kotlin control-flow semantics.",
+    "Device execution results, foreground/background scheduling, network permissions and cleanup barriers are recorded separately."
+  ],
+  "source_scope": "Selected actual production, packaging and test sources; all byte-identical to stage at audit time; no claim that source hashing alone proves compiler inputs.",
+  "lint": {
+    "report": "android/probeapp/build/reports/lint-results-validation.xml",
+    "sha256": "4dafcf521c77faefc68e6666b19e6dbb897b690a022b8108410f13a21975cb8f",
+    "errors": 0,
+    "warnings": 3,
+    "issues": [
+      {
+        "id": "DataExtractionRules",
+        "severity": "Warning"
+      },
+      {
+        "id": "StaticFieldLeak",
+        "severity": "Warning"
+      },
+      {
+        "id": "SetTextI18n",
+        "severity": "Warning"
+      }
+    ],
+    "warning_context": "Three warnings retained verbatim by id. RuntimeClient singleton construction uses context.applicationContext; no lint warning was suppressed by this audit."
+  },
+  "cleanup": {
+    "audit_scratch_removed": true,
+    "device_actions": false,
+    "root_logs_modified": false
+  },
+  "apk_hashes_stable_across_audit": true,
+  "signing_reference": {
+    "project_key": ".build/android-user/debug.keystore",
+    "certificate_sha256": "adc349405a295e9c24e01908e6f3b9e01dff253fe5da3e11685972e1d524e9ec",
+    "read_only_keytool_checked": true,
+    "matches_historical": ".build/artifacts/io-artifact-audit.json"
+  },
+  "tools": {
+    "android_build_tools": "36.0.0",
+    "signature": "apksigner verify --verbose --print-certs",
+    "alignment": "zipalign -c -P 16 4",
+    "manifest": "aapt dump badging; aapt dump xmltree AndroidManifest.xml",
+    "native": "ELF64 program headers/symbol tables parsed from bytes; ARM64 BL targets and function bytes compared",
+    "lint": "Existing final lint XML parsed; lint not rerun by audit"
+  },
+  "retained_copies": [
+    {
+      "file": ".build/artifacts/sucrune-linux-dev.apk",
+      "bytes": 5258600,
+      "sha256": "daf4596ec3442713bb33c729a8841cf73fddb0668d8cd2ddcee3280b0415d821",
+      "matches_audited_output": true
+    },
+    {
+      "file": ".build/artifacts/sucrune-linux-tests.apk",
+      "bytes": 143607544,
+      "sha256": "10ff1245870b13a3424e882d1f350fc3fc208a5bc95169ba18956da2bf0b8eaf",
+      "matches_audited_output": true
+    }
+  ]
+}

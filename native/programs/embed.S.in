@@ -1,0 +1,10 @@
+.section .rodata.sucrune_musl_smoke,"a",%progbits
+.balign 16
+.global sucrune_musl_smoke_start
+.hidden sucrune_musl_smoke_start
+sucrune_musl_smoke_start:
+.incbin "@SUCRUNE_MUSL_SMOKE_ELF@"
+.global sucrune_musl_smoke_end
+.hidden sucrune_musl_smoke_end
+sucrune_musl_smoke_end:
+.section .note.GNU-stack,"",%progbits

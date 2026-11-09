@@ -1,0 +1,12 @@
+* text=auto eol=lf
+*.sh text eol=lf
+gradlew text eol=lf
+*.bat text eol=crlf
+*.jar binary
+
+# The build verifies these files byte for byte against Lua's release manifest.
+third_party/lua/src/** -text -whitespace
+third_party/lua/UPSTREAM_README -text -whitespace
+
+# DSH fixture receipts record the SHA-256 of the original Windows manifest.
+docs/dsh-rootfs-provenance.json -text whitespace=cr-at-eol

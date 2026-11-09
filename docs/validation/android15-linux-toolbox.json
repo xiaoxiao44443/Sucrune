@@ -1,0 +1,158 @@
+{
+  "schema_version": 1,
+  "checked_at_utc": "2026-11-07 05:52:19 UTC",
+  "device": {
+    "android": "15",
+    "api": 35,
+    "abi": "arm64-v8a",
+    "model": "PKR110",
+    "root_required": false,
+    "mode": "foreground non-debuggable validation APK, isolated guest workers"
+  },
+  "artifacts": [
+    {
+      "name": "probeapp-validation-androidTest.apk",
+      "bytes": 175565788,
+      "sha256": "e3ac0c6d2933dadefecb61251c901d53ed1d0697e86832ac80fa9f72ece66c21",
+      "toolbox_asset": true
+    },
+    {
+      "name": "probeapp-validation.apk",
+      "bytes": 5496528,
+      "sha256": "d1dcde8c0643f2665ad5bdb40b844f37046de29c652b9754047b9136fb4a359d",
+      "toolbox_asset": false
+    }
+  ],
+  "userland": {
+    "delivery": "androidTest assets only; RuntimeClient.importFile into disposable projects",
+    "asset": "assets/linux-toolbox/profile.bin",
+    "bytes": 31263787,
+    "sha256": "89d31246d157b0b3582faa7cbd95f9a590fe2d005d5a0f4c2a2a885418881a5e",
+    "overlay_files": 1374,
+    "guest_hard_links": 98,
+    "busybox_command_names": 96,
+    "busybox_names_used_in_behavioral_cases": 88,
+    "catalog_only": [
+      "chgrp",
+      "chown",
+      "df",
+      "mkfifo",
+      "nproc",
+      "time",
+      "timeout",
+      "whoami"
+    ],
+    "versions": {
+      "busybox": "1.35.0",
+      "ripgrep": "13.0.0",
+      "jq": "1.6",
+      "git": "2.39.5",
+      "curl": "7.88.1",
+      "cpython": "3.11.2",
+      "pip": "23.0.1"
+    }
+  },
+  "suites": [
+    {
+      "cases": [
+        "linux_import_upstream",
+        "linux_toolbox_import",
+        "base_applet_catalog",
+        "base_ps_project_visibility",
+        "base_pipeline_sibling_group",
+        "base_ash_script",
+        "base_text_pipeline",
+        "base_file_workflow",
+        "base_archives",
+        "base_patch",
+        "base_links_and_modes",
+        "base_columns",
+        "base_bytes_and_digests",
+        "base_process_and_clock",
+        "base_additional_archives",
+        "base_read_archives",
+        "base_shell_utilities",
+        "base_ripgrep",
+        "base_jq",
+        "linux_toolbox_null_device",
+        "linux_toolbox_git_worktree",
+        "linux_toolbox_curl_https",
+        "linux_toolbox_git_https",
+        "linux_python_socket_nonblocking",
+        "linux_python_script_and_stdlib",
+        "linux_python_subprocess_pipes",
+        "linux_exec_project_owner_permissions",
+        "linux_python_pip_offline_wheel",
+        "linux_toolbox_exec_replace"
+      ],
+      "instrumentation_code": -1,
+      "expected_tests": 29,
+      "suite": "accepted",
+      "verified_removed_projects": 1,
+      "failed": 0,
+      "passed": 29
+    },
+    {
+      "cases": [
+        "linux_dsh_profile_prepare",
+        "linux_dsh_profile_install_bundle",
+        "linux_dsh_persistent_bash_tool"
+      ],
+      "instrumentation_code": -1,
+      "expected_tests": 3,
+      "suite": "agent-accepted",
+      "verified_removed_projects": 2,
+      "failed": 0,
+      "passed": 3
+    },
+    {
+      "cases": [
+        "linux_import_upstream",
+        "linux_toolbox_import",
+        "known_bash_nested_pipeline",
+        "known_ash_nested_pipeline",
+        "known_tar_vfork"
+      ],
+      "instrumentation_code": -1,
+      "expected_tests": 5,
+      "suite": "limits-accepted",
+      "verified_removed_projects": 1,
+      "failed": 0,
+      "passed": 5
+    },
+    {
+      "cases": [
+        "linux_import_upstream",
+        "linux_dynamic_hello",
+        "linux_last_instruction_trap",
+        "linux_loader_dependency_list",
+        "linux_argv_and_reuse",
+        "linux_invalid_image_and_permissions",
+        "linux_project_boundary",
+        "linux_runner_timeout",
+        "linux_runner_cancel_and_closed_stdin",
+        "linux_runner_exit_without_stdin_read",
+        "linux_signal_delivery_and_return",
+        "linux_thread_parallel_and_join",
+        "linux_thread_exit_group",
+        "linux_local_io_concurrency"
+      ],
+      "instrumentation_code": -1,
+      "expected_tests": 14,
+      "suite": "regression",
+      "failed": 0,
+      "passed": 14
+    }
+  ],
+  "scope": {
+    "accepted": "Fresh project import, command discovery, guest files/processes, Git local worktree and clone, HTTPS ls-remote and curl with CA validation, Python standard library, pipes and offline wheel installation.",
+    "agent-accepted": "Original DSH registered Bash tool via its PTY. Git, curl, rg, Python, jq and cat performed the operation and produced the checked output file. Offline tool test with no model credentials.",
+    "limits-accepted": "Two prerequisite imports and three separately reproduced failures. These cases do not count as supported workflows.",
+    "regression": "Existing Linux baseline. These APKs remained installed. Instrumentation deleted session-created projects on completion."
+  },
+  "known_limitations": [
+    "Pipeline inside command substitution requiring a second fork in the raw pre-exec child (Bash and ash)",
+    "BusyBox tar -czf launches its helper with unsupported vfork; separate tar and gzip round-trip verified",
+    "General distribution symlinks, direct shebang execution, package-manager bootstrap and other Android versions were not accepted in this run"
+  ]
+}

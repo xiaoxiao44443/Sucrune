@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="runtime_status">%1$s · %2$s%3$s</string>
+    <string name="runtime_error">失败：%1$s</string>
+    <string name="probe_cleanup_waiting">%1$s · 正在回收探针进程</string>
+    <string name="probe_cleanup_delayed">%1$s · 进程尚未退出，后续测试暂不可用</string>
+</resources>

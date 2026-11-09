@@ -1,0 +1,227 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-07",
+  "version": "0.8.0-agent-dev",
+  "source_directory": ".build/device-results/agent-20261107",
+  "scopes": {
+    "foreground_guest_suites": "Physical Android 15/API 35 ARM64 device. The ordinary application manager supervised isolated-UID Linux runner executions. Counts refer to individual runs. Repeated cases are never added across runs.",
+    "manager_capabilities": "Direct link and symlink operations ran in the ordinary Android application manager. The synthetic credential bridge tested transport only.",
+    "controller_histories": "Only public case names, terminal classifications and bounded diagnostic fields emitted by the controller are used. The two retrospective probes may sample the same execution.",
+    "standalone": "Previous adb-shell (UID 2000) native evidence is separate in android15-agent-execution-progress.json. It is excluded from all application results here.",
+    "authenticated_acceptance": "A complete model-to-tools-to-artifact, restart and cancel acceptance outcome belongs in a separate final run."
+  },
+  "application_manager_probes": [
+    {
+      "source": "app-link-capability-first.txt",
+      "bytes": 163,
+      "sha256": "911c36fd3b0f83ff4c5416607e879a7cbc0ebcba2593da68243397d37f9ca20c",
+      "direct_hardlink_errno": 13,
+      "symlink_errno": 0,
+      "scratch_removed": true
+    },
+    {
+      "source": "credential-bridge-synthetic-first.txt",
+      "bytes": 2161,
+      "sha256": "5edb7c7fd8f56be08b4150ba47ffd11da2657445ae42a13527d537ac2dcf6b8a",
+      "synthetic_only": true,
+      "host_acknowledged": true,
+      "temporary_forward_removed": true,
+      "descriptor_count": 1
+    }
+  ],
+  "foreground_guest_suites": [
+    {
+      "source": "linux-node-linkat-ordinary.txt",
+      "bytes": 19888,
+      "sha256": "c03e69f9196360cdfc1bd6af8585c39ce0fc646da38a661383ef255b7a0ea9f5",
+      "passed": 27,
+      "failed": 1,
+      "selected_cases": {
+        "linux_node_fs_workflow": "fail"
+      }
+    },
+    {
+      "source": "linux-stream-stty-first.txt",
+      "bytes": 5112,
+      "sha256": "5bb2375565094558e680ae48de376849b4121a6c647be06261982316d3d62bc5",
+      "passed": 14,
+      "failed": 1,
+      "selected_cases": {
+        "linux_node_live_stdout_roundtrip": "fail",
+        "linux_node_live_stdout_overflow": "pass",
+        "linux_node_pty_bash": "pass",
+        "linux_node_pty_stty_echo": "pass"
+      }
+    },
+    {
+      "source": "linux-stream-roundtrip-second.txt",
+      "bytes": 1149,
+      "sha256": "a6e019488f9b65c3aed9936f9eed875964a4ba47462f7b5dd3327235b2029231",
+      "passed": 3,
+      "failed": 0,
+      "selected_cases": {
+        "linux_node_live_stdout_roundtrip": "pass",
+        "linux_node_live_stdout_overflow": "pass"
+      },
+      "live_redacted_bytes": 1180335,
+      "frames": 12,
+      "durable_prefix_bytes": 65536
+    },
+    {
+      "source": "linux-link-alias-dsh-tool-first.txt",
+      "bytes": 16190,
+      "sha256": "8c1b7f53fa89821809f303c39329d66d01255563801838ba908f613f37645303",
+      "passed": 32,
+      "failed": 1,
+      "selected_cases": {
+        "linux_node_fs_workflow": "pass",
+        "linux_dsh_profile_install_bundle": "pass",
+        "linux_dsh_sdk_initialize_shutdown": "pass",
+        "linux_dsh_persistent_bash_tool": "fail"
+      },
+      "persistent_bash_failed_at": "proc_directory_unreadable"
+    },
+    {
+      "source": "linux-proc-focused-first.txt",
+      "bytes": 18532,
+      "sha256": "d19892c36e1e08aebdac777fbf93423e1c41c02f76f2a37235f6e7d5cd1407b8",
+      "passed": 7,
+      "failed": 1,
+      "selected_cases": {
+        "linux_node_owned_proc_stat": "fail"
+      }
+    },
+    {
+      "source": "linux-proc-focused-shape.txt",
+      "bytes": 8610,
+      "sha256": "92438927e6cc07ae49f6bc616f35b9043f10225971b6358883f2581ad6e8adf9",
+      "passed": 8,
+      "failed": 0,
+      "selected_cases": {
+        "linux_node_owned_proc_stat": "pass"
+      }
+    }
+  ],
+  "historical_real_controller_runs": [
+    {
+      "source": "original-agent-real-first.jsonl",
+      "bytes": 6207,
+      "sha256": "bd82db757f8beb5a0158c7b8de6ba15c53b302249efe8ec5b0583d7a84bf1453",
+      "started": 52,
+      "passed": 51,
+      "failed_cases": [],
+      "cases_without_terminal_status": [
+        "linux_dsh_agent_model_file_shell"
+      ],
+      "passed_preflight": [
+        "linux_node_glibc_dns_lookup",
+        "linux_node_cares_dns_records",
+        "linux_node_outbound_https_certificate",
+        "linux_node_pty_bash",
+        "linux_dsh_native_flock_conflict_release",
+        "linux_dsh_native_process_report",
+        "linux_dsh_sdk_initialize_shutdown",
+        "linux_dsh_agent_prepare"
+      ],
+      "nonprogress_diagnostics": [],
+      "controller_reported_device_case_failed": false
+    },
+    {
+      "source": "original-agent-real-linkat.jsonl",
+      "bytes": 8491,
+      "sha256": "fd93892c46cdda476e3ab3e8c40c5f727e81afe779ad4bce72de13a317423c11",
+      "started": 55,
+      "passed": 50,
+      "failed_cases": [
+        "linux_node_fs_workflow",
+        "linux_dsh_agent_prepare",
+        "linux_dsh_agent_model_file_shell",
+        "linux_dsh_agent_restart_resume",
+        "linux_dsh_agent_cancel_active_turn"
+      ],
+      "cases_without_terminal_status": [],
+      "passed_preflight": [
+        "linux_node_glibc_dns_lookup",
+        "linux_node_cares_dns_records",
+        "linux_node_outbound_https_certificate",
+        "linux_node_pty_bash",
+        "linux_dsh_native_flock_conflict_release",
+        "linux_dsh_native_process_report",
+        "linux_dsh_sdk_initialize_shutdown"
+      ],
+      "nonprogress_diagnostics": [
+        {
+          "test": "linux_dsh_agent_prepare",
+          "stage": "prepare",
+          "safe_reason": "assertion",
+          "error_kind": "none",
+          "event_count": 0,
+          "tool_count": 0,
+          "http_status": 0,
+          "rpc_code": 0
+        },
+        {
+          "test": "linux_dsh_agent_model_file_shell",
+          "stage": "prerequisite",
+          "safe_reason": "assertion",
+          "error_kind": "none",
+          "event_count": 0,
+          "tool_count": 0,
+          "http_status": 0,
+          "rpc_code": 0
+        },
+        {
+          "test": "linux_dsh_agent_restart_resume",
+          "stage": "prerequisite",
+          "safe_reason": "assertion",
+          "error_kind": "none",
+          "event_count": 0,
+          "tool_count": 0,
+          "http_status": 0,
+          "rpc_code": 0
+        },
+        {
+          "test": "linux_dsh_agent_cancel_active_turn",
+          "stage": "prerequisite",
+          "safe_reason": "assertion",
+          "error_kind": "none",
+          "event_count": 0,
+          "tool_count": 0,
+          "http_status": 0,
+          "rpc_code": 0
+        }
+      ],
+      "controller_reported_device_case_failed": true
+    }
+  ],
+  "retrospective_manager_probes": [
+    {
+      "source": "original-agent-retrospective-first.txt",
+      "bytes": 292,
+      "sha256": "124d5764af600fc6f939aa1ba48f1d8879821714c5e3b25c47c8d81edcdac602",
+      "state": "cancelled",
+      "truncated": false,
+      "provider_code": "UNKNOWN",
+      "turn_end_error": true,
+      "enosys_marker": true,
+      "known_link_operation": false
+    },
+    {
+      "source": "original-agent-retrospective-second.txt",
+      "bytes": 320,
+      "sha256": "e18a77d4296b38ce0ba738229b88dae5862eb0f55b6dc9d81d79dd1f39be8075",
+      "state": "cancelled",
+      "truncated": false,
+      "provider_code": "UNKNOWN",
+      "turn_end_error": true,
+      "enosys_marker": true,
+      "known_link_operation": true
+    }
+  ],
+  "verified_semantics": {
+    "linked_project_files": "In linux-link-alias-dsh-tool-first the official Linux Node FS case passed equal dev/inode, nlink 2 then 1, EEXIST/no overwrite, project escape refusal, read after unlink and independent manager readback of history.jsonl. The ordinary-app direct link syscall itself was denied.",
+    "live_stdout": "The second round-trip suite verified 12 complete UTF-8/redacted responses beyond the durable prefix, EOF, bounded overflow without an active reader, and cleanup.",
+    "terminal": "The original node-pty/Bash and GNU stty echo case passed in linux-stream-stty-first, independently of the streaming failure in that run.",
+    "process_inspection": "linux-proc-focused-shape verified scoped self/direct-child proc stat, enumeration, permissions and loss of visibility after reaping. Its binary preceded the later standalone path-stat optimization."
+  }
+}

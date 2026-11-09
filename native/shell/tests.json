@@ -1,0 +1,96 @@
+{
+  "scope": "Run each case in a fresh disposable project; these are guest expectations, not claims of device execution.",
+  "cases": [
+    {
+      "name": "files_and_script",
+      "script": "mkdir -p work/sub; cd work; NAME='Sucrune'; printf '%s\\n' \"hello $NAME\" > greeting; echo second >> greeting; cp greeting copy; mv copy moved; cat moved; printf '%s\\n' 'echo script-ran' 'exit 7' > task.sh; sh task.sh; echo $?; touch empty; rm greeting moved empty; pwd",
+      "exit_code": 0,
+      "stdout": "hello Sucrune\nsecond\nscript-ran\n7\n/work\n",
+      "stderr": ""
+    },
+    {
+      "name": "variables_logic_and_quotes",
+      "script": "A='hello world'; B=$A; echo \"$B\" '${A}'; false && echo wrong || echo recovered; true || echo wrong && echo done; false; echo $?",
+      "exit_code": 0,
+      "stdout": "hello world ${A}\nrecovered\ndone\n1\n",
+      "stderr": ""
+    },
+    {
+      "name": "nested_scope_and_redirection",
+      "script": "A=outer; sh -c 'A=inner; mkdir child; cd child; echo $A; pwd' > result; cat result; echo $A; pwd",
+      "exit_code": 0,
+      "stdout": "inner\n/child\nouter\n/\n",
+      "stderr": ""
+    },
+    {
+      "name": "unicode_paths",
+      "script": "mkdir '项目 😀'; cd '项目 😀'; echo '你好，Sucrune' > '结果.txt'; cat '结果.txt'; pwd",
+      "exit_code": 0,
+      "stdout": "你好，Sucrune\n/项目 😀\n",
+      "stderr": ""
+    },
+    {
+      "name": "pipeline_rejected_before_current_command",
+      "script": "echo must-not-run | cat",
+      "exit_code": 2,
+      "stdout": "",
+      "stderr_contains": "pipelines and background commands are unsupported"
+    },
+    {
+      "name": "missing_file_errno",
+      "script": "cat absent; echo $?",
+      "exit_code": 0,
+      "stdout": "1\n",
+      "stderr_contains": "cat: absent (errno 2)"
+    },
+    {
+      "name": "unknown_command",
+      "script": "not_a_builtin",
+      "exit_code": 127,
+      "stdout": "",
+      "stderr_contains": "command not found: not_a_builtin"
+    },
+    {
+      "name": "exec_lua_script_replaces_shell",
+      "script": "printf '%s\\n' 'print(\"from-lua\")' > task.lua; exec /bin/lua task.lua; echo unreachable",
+      "exit_code": 0,
+      "stdout": "from-lua\n",
+      "stderr": ""
+    },
+    {
+      "name": "exec_missing_can_continue",
+      "script": "exec /bin/missing; echo $?; echo alive",
+      "exit_code": 0,
+      "stdout": "127\nalive\n",
+      "stderr_contains": "exec: /bin/missing (errno 2)"
+    },
+    {
+      "name": "exec_file_streams",
+      "script": "printf '%s\\n' '10' '20' '12' > input; printf '%s\\n' 'local n=0;for v in io.lines() do n=n+tonumber(v) end;print(n)' > sum.lua; exec /bin/lua sum.lua < input > result",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "artifact": { "path": "result", "text": "42\n" }
+    },
+    {
+      "name": "builtin_input_output_restore",
+      "script": "echo one > input; cat < input > out; echo two >> out; cat out; echo restored",
+      "exit_code": 0,
+      "stdout": "one\ntwo\nrestored\n",
+      "stderr": ""
+    },
+    {
+      "name": "failed_exec_restores_stdout",
+      "script": "exec /missing > out || echo restored; echo alive",
+      "exit_code": 0,
+      "stdout": "restored\nalive\n",
+      "stderr_contains": "exec: /missing (errno 2)",
+      "artifact": { "path": "out", "text": "" }
+    },
+    {
+      "name": "cancellation",
+      "script": "echo started; sleep 60; echo should-not-appear-after-cancel",
+      "action": "Wait for started, cancel through host API, then verify worker death and no second line."
+    }
+  ]
+}

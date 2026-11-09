@@ -1,0 +1,246 @@
+{
+  "schema_version": 1,
+  "checked_at_utc": "2026-11-07 07:19:51 UTC",
+  "device": {
+    "model": "PKR110",
+    "android": "15",
+    "api": 35,
+    "abi": "arm64-v8a",
+    "page_bytes": 4096,
+    "root_required": false,
+    "execution": "foreground, non-debuggable validation target APK and isolated workers"
+  },
+  "artifacts": {
+    "target": {
+      "filename": "probeapp-validation.apk",
+      "bytes": 5518140,
+      "sha256": "86881a4085e09e3c9efa4cd785a2adb34b27c03bdbaad0a07daad15ec6db6135",
+      "fixture_assets": []
+    },
+    "instrumentation_core_suites": {
+      "filename": "probeapp-validation-androidTest.apk",
+      "bytes": 334457757,
+      "sha256": "2c8115ca832afd8b2903d5f21c8ed49768433977cbd26836eaa53da1ac6a0d36",
+      "fixture_assets": [
+        "assets/linux-android-build/profile.bin",
+        "assets/linux-distro/files.sha256",
+        "assets/linux-distro/inventory.json",
+        "assets/linux-distro/rootfs.bin",
+        "assets/linux-go-stdlib/profile.bin",
+        "assets/linux-go/profile.bin",
+        "assets/linux-jdk-zero/profile.bin",
+        "assets/linux-jdk/profile.bin",
+        "assets/linux-native-activity/profile.bin",
+        "assets/linux-toolbox/profile.bin"
+      ]
+    },
+    "instrumentation_final": {
+      "filename": "probeapp-validation-androidTest.apk",
+      "bytes": 334459725,
+      "sha256": "6275d8fa6d95242e762f72f3c5bcd0e29280614119ecb5b6a32a9523788ea2b4",
+      "fixture_assets": [
+        "assets/linux-android-build/profile.bin",
+        "assets/linux-distro/files.sha256",
+        "assets/linux-distro/inventory.json",
+        "assets/linux-distro/rootfs.bin",
+        "assets/linux-go-stdlib/profile.bin",
+        "assets/linux-go/profile.bin",
+        "assets/linux-jdk-zero/profile.bin",
+        "assets/linux-jdk/profile.bin",
+        "assets/linux-native-activity/profile.bin",
+        "assets/linux-toolbox/profile.bin"
+      ]
+    },
+    "note": "The target APK SHA-256 was identical for both installations. Only the optional test APK's Git advertisement parser changed before the final two suites."
+  },
+  "fixture": {
+    "distribution": "Alpine Linux 3.22.2 aarch64 minirootfs",
+    "source": "https://dl-cdn.alpinelinux.org/alpine/v3.22/releases/aarch64/alpine-minirootfs-3.22.2-aarch64.tar.gz",
+    "gzip": {
+      "bytes": 3981043,
+      "sha256": "6bf491907b705caa5fc65773fbbc1d0954530b6c455d4446f670a4c1fdcea489"
+    },
+    "tar": {
+      "bytes": 8806400,
+      "sha256": "046decd25c65c6511229d2aca49bc0c27a02a5949d834eba2dbdcae449ff4295"
+    },
+    "members_checked": {
+      "regular_files_sha256": 87,
+      "directories": 98,
+      "symbolic_link_targets": 335,
+      "total": 520
+    },
+    "bootstrap": "Separate empty project, one static Debian BusyBox, guest tar -xof; executed the extracted Alpine musl /bin/sh, BusyBox, a shebang script using redirected read in a command substitution and /sbin/apk info -e alpine-baselayout."
+  },
+  "suites": {
+    "distribution": {
+      "failed": 0,
+      "passed": 10,
+      "verified_removed_projects": 2,
+      "instrumentation_code": -1,
+      "tests": {
+        "linux_import_upstream": "PASS",
+        "linux_toolbox_import": "PASS",
+        "linux_guest_exec_compiler_argument_vector": "PASS",
+        "linux_shebang_direct_and_env": "PASS",
+        "linux_shebang_exec_and_fork_errors": "PASS",
+        "linux_bash_nested_pipeline": "PASS",
+        "linux_ash_nested_pipeline": "PASS",
+        "linux_tar_vfork_gzip": "PASS",
+        "linux_distro_symlink_resolution": "PASS",
+        "linux_alpine_rootfs": "PASS"
+      }
+    },
+    "processes": {
+      "failed": 0,
+      "passed": 21,
+      "instrumentation_code": -1,
+      "tests": {
+        "linux_import_upstream": "PASS",
+        "linux_dynamic_hello": "PASS",
+        "linux_last_instruction_trap": "PASS",
+        "linux_loader_dependency_list": "PASS",
+        "linux_argv_and_reuse": "PASS",
+        "linux_invalid_image_and_permissions": "PASS",
+        "linux_project_boundary": "PASS",
+        "linux_runner_timeout": "PASS",
+        "linux_runner_cancel_and_closed_stdin": "PASS",
+        "linux_runner_exit_without_stdin_read": "PASS",
+        "linux_signal_delivery_and_return": "PASS",
+        "linux_thread_parallel_and_join": "PASS",
+        "linux_thread_exit_group": "PASS",
+        "linux_local_io_concurrency": "PASS",
+        "linux_guest_fork_vfork_semantics": "PASS",
+        "linux_guest_fork_continuation_and_wait": "PASS",
+        "linux_guest_fork_unlinked_file_and_cwd": "PASS",
+        "linux_guest_fork_stop_continue_wait": "PASS",
+        "linux_guest_fork_exec_debian_hello": "PASS",
+        "linux_guest_pselect6_mask_and_readiness": "PASS",
+        "linux_fork_cancel_session_lease": "PASS"
+      }
+    },
+    "compilers": {
+      "failed": 0,
+      "passed": 18,
+      "verified_removed_projects": 1,
+      "instrumentation_code": -1,
+      "tests": {
+        "linux_import_upstream": "PASS",
+        "linux_toolbox_import": "PASS",
+        "linux_compiler_import_go": "PASS",
+        "linux_compiler_import_go-stdlib": "PASS",
+        "linux_compiler_import_jdk": "PASS",
+        "linux_compiler_import_android": "PASS",
+        "linux_compiler_import_native-activity": "PASS",
+        "linux_compiler_blocking_flock": "PASS",
+        "linux_go_toolchain_version": "PASS",
+        "linux_go_compile_archive": "PASS",
+        "linux_go_compile_link_run": "PASS",
+        "linux_go_build_and_run": "PASS",
+        "linux_go_build_android": "PASS",
+        "jdk_openjdk_version": "PASS",
+        "jdk_javac_class_and_execute": "PASS",
+        "linux_android_aapt2_resource_apk": "PASS",
+        "linux_android_java_signed_apk": "PASS",
+        "linux_android_native_activity_apk": "PASS"
+      }
+    },
+    "dsh_shell": {
+      "failed": 0,
+      "passed": 3,
+      "verified_removed_projects": 2,
+      "instrumentation_code": -1,
+      "tests": {
+        "linux_dsh_profile_prepare": "PASS",
+        "linux_dsh_profile_install_bundle": "PASS",
+        "linux_dsh_persistent_bash_tool": "PASS"
+      }
+    },
+    "toolbox": {
+      "failed": 0,
+      "passed": 32,
+      "verified_removed_projects": 1,
+      "instrumentation_code": -1,
+      "tests": {
+        "linux_import_upstream": "PASS",
+        "linux_toolbox_import": "PASS",
+        "base_applet_catalog": "PASS",
+        "base_ps_project_visibility": "PASS",
+        "base_pipeline_sibling_group": "PASS",
+        "base_ash_script": "PASS",
+        "base_text_pipeline": "PASS",
+        "base_file_workflow": "PASS",
+        "base_archives": "PASS",
+        "base_patch": "PASS",
+        "base_links_and_modes": "PASS",
+        "base_columns": "PASS",
+        "base_bytes_and_digests": "PASS",
+        "base_process_and_clock": "PASS",
+        "base_additional_archives": "PASS",
+        "base_read_archives": "PASS",
+        "base_shell_utilities": "PASS",
+        "base_ripgrep": "PASS",
+        "base_jq": "PASS",
+        "linux_toolbox_null_device": "PASS",
+        "linux_toolbox_git_worktree": "PASS",
+        "linux_toolbox_curl_https": "PASS",
+        "linux_toolbox_git_https": "PASS",
+        "linux_python_socket_nonblocking": "PASS",
+        "linux_python_script_and_stdlib": "PASS",
+        "linux_python_subprocess_pipes": "PASS",
+        "linux_exec_project_owner_permissions": "PASS",
+        "linux_python_pip_offline_wheel": "PASS",
+        "linux_toolbox_exec_replace": "PASS",
+        "linux_bash_nested_pipeline": "PASS",
+        "linux_ash_nested_pipeline": "PASS",
+        "linux_tar_vfork_gzip": "PASS"
+      }
+    },
+    "final_network_comparison": {
+      "failed": 0,
+      "passed": 4,
+      "verified_removed_projects": 1,
+      "instrumentation_code": -1,
+      "tests": {
+        "linux_import_upstream": "PASS",
+        "linux_toolbox_import": "PASS",
+        "linux_compare_git_http11": "PASS",
+        "linux_compare_curl_git_http2": "PASS"
+      }
+    },
+    "final_distribution": {
+      "failed": 0,
+      "passed": 10,
+      "verified_removed_projects": 2,
+      "instrumentation_code": -1,
+      "tests": {
+        "linux_import_upstream": "PASS",
+        "linux_toolbox_import": "PASS",
+        "linux_guest_exec_compiler_argument_vector": "PASS",
+        "linux_shebang_direct_and_env": "PASS",
+        "linux_shebang_exec_and_fork_errors": "PASS",
+        "linux_bash_nested_pipeline": "PASS",
+        "linux_ash_nested_pipeline": "PASS",
+        "linux_tar_vfork_gzip": "PASS",
+        "linux_distro_symlink_resolution": "PASS",
+        "linux_alpine_rootfs": "PASS"
+      }
+    }
+  },
+  "observations": {
+    "go": "Cold pure-Go build of a Linux ARM64 application importing the standard library, then execution and output-file verification. The Android ARM64 PIE was cross-compiled in the guest and its interpreter and build settings verified.",
+    "android": "Guest javac/D8/AAPT2/zipalign/apksigner generated and verified a v2-signed Java Activity APK. The ARM64 NativeActivity fixture produced a separate unsigned APK. Neither APK was installed.",
+    "network": "Earlier default git ls-remote attempts timed out after TLS and HTTP/2 negotiation. The full toolbox run retrieved HEAD over HTTP/2; the separate forced HTTP/1.1 run retrieved HEAD, and standalone curl retrieved a valid protocol-v2 Git advertisement over HTTP/2. No change to the runtime's default HTTP negotiation.",
+    "host": "Go management suite passed with go test ./... in the checkout. The validation Android build and lint passed."
+  },
+  "limits": [
+    "Fork continuations have a bounded pre-exec syscall subset. A raw child with outstanding registered children must reap them before exec. A shared-VM vfork child doing another vfork receives EOPNOTSUPP.",
+    "Pre-exec vfork pointer validation uses the clone-time memory ranges. Concurrent sibling changes to mappings or permissions can invalidate a buffer after validation.",
+    "On pre-exec project files, readv/writev are handled per segment via the broker; operations from other processes can interleave. Local pipes and sockets use kernel vectored I/O.",
+    "These physical-device results apply to the listed Android 15 device and the supplied aarch64 userspaces. apk database querying was exercised; apk add, distribution upgrades, init and services were not exercised."
+  ],
+  "cleanup": {
+    "target_and_test_packages": "Retained via adb install -r. No produced application installed.",
+    "temporary_environments": "Instrumentation deletes its environments in finally. Applicable suites additionally confirmed that their IDs disappeared from listEnvironments; verified_removed_projects is per run. No device screenshot was taken."
+  }
+}

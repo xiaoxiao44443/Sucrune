@@ -1,0 +1,300 @@
+{
+  "schema_version": 1,
+  "checked_at_utc": "2026-11-07 09:56:59 UTC",
+  "scope": "One generated minimal Kotlin Android Activity, offline Gradle/AGP built-in Kotlin and debug signing, on an Android 15 ARM64 production device. Standalone Kotlin/JVM and direct SDK Java/Kotlin workflows were verified separately.",
+  "device": {
+    "model": "PKR110",
+    "android": "15",
+    "api": 35,
+    "abi": "arm64-v8a",
+    "root_required": false,
+    "execution": "Non-debuggable validation target on a physical device, guest workloads in isolated workers."
+  },
+  "toolchain": {
+    "guest_jdk": "Debian OpenJDK 17.0.21 (Linux/AArch64)",
+    "gradle": "9.3.1",
+    "agp": "9.1.1",
+    "standalone_kotlin": "2.2.21",
+    "agp_builtin_kotlin_dependencies": "2.2.10",
+    "compile_sdk": "37.0 revision 2",
+    "build_tools_layout": "36.0.0",
+    "native_sdk_tools": "Six AArch64 tools from the locked AOSP platform-tools-35.0.2 community build; see scripts/linux-gradle-sdk-lock.json.",
+    "min_sdk": 29,
+    "target_sdk": 35,
+    "repository": "Offline /opt/maven inside a fresh project; no host Gradle transform cache imported."
+  },
+  "agp_export": {
+    "workflow": "gradle",
+    "case": "linux_gradle_kotlin_apk",
+    "package": "dev.sucrune.gradleprobe",
+    "activity": "dev.sucrune.gradleprobe.MainActivity",
+    "marker": "Sucrune Kotlin 00fffbb9",
+    "bytes": 2433332,
+    "sha256": "ba0e95c813f86da942980266a99438852ea4403e248141498fb8056d86a93f51",
+    "chunks": 199,
+    "gradle": "9.3.1",
+    "vm": "-Xint, 384 MiB; JDK 17 PlainDatagramSocket for the Gradle lock listener",
+    "project": "Generated on the physical device with no prebuilt guest transform cache",
+    "guest_build_successful": true,
+    "compile_debug_kotlin": true,
+    "package_debug": true,
+    "assemble_debug": true,
+    "zip_entry_count": 14,
+    "all_zip_crcs_verified": true,
+    "central_directory_bytes": 1095,
+    "dex_count": 3,
+    "activity_and_marker_dex": "classes3.dex",
+    "apksigner_api35_v2_verified": true,
+    "zipalign_4byte_verified": true,
+    "aapt2_badging_and_resources_verified": true,
+    "release_signing_tested": false,
+    "desktop_copy": ".build/artifacts/gradle-kotlin-debug-ba0e95c813f8.apk",
+    "observed_seconds_from_test_log_start_to_export": 772,
+    "timing_scope": "Wall-clock interval including guest fixture import, cold build and export. Installer confirmation excluded. Not a general Gradle benchmark."
+  },
+  "agp_install": {
+    "workflow": "gradle",
+    "case": "linux_gradle_kotlin_apk",
+    "package": "dev.sucrune.gradleprobe",
+    "activity": "dev.sucrune.gradleprobe.MainActivity",
+    "marker": "Sucrune Kotlin 00fffbb9",
+    "bytes": 2433332,
+    "sha256": "ba0e95c813f86da942980266a99438852ea4403e248141498fb8056d86a93f51",
+    "chunks": 199,
+    "installed": true,
+    "activity_started": true,
+    "text_view_verified": true,
+    "temporary_package_removed": true
+  },
+  "java_activity": {
+    "workflow": "sdk",
+    "case": "linux_android_java_signed_apk",
+    "package": "dev.sucrune.compiled",
+    "activity": "dev.sucrune.compiled.MainActivity",
+    "marker": "Sucrune Build Probe",
+    "bytes": 8461,
+    "sha256": "25ecd53dad97155163d8114485c9eafcf338e2fc68bea140b9d36761de8e3725",
+    "chunks": 1,
+    "installed": true,
+    "activity_started": true,
+    "text_view_verified": true,
+    "temporary_package_removed": true
+  },
+  "kotlin_activity": {
+    "workflow": "kotlin",
+    "package": "dev.sucrune.compiled",
+    "activity": "dev.sucrune.compiled.MainActivity",
+    "bytes": 8461,
+    "sha256": "e416d4fc0edf5f54d080e4c92412f49fb18571d8bd9054256bb69da70537268a",
+    "marker": "Sucrune Kotlin SDK cf6eb0a0-77f9-4a06-87f9-3bc61f942b2d",
+    "installed": true,
+    "activity_started": true,
+    "text_view_verified": true,
+    "temporary_package_removed": true,
+    "install_time_device": "2026-11-07 16:08:30",
+    "verification": "Read the installed base.apk after the earlier installer timeout, matched the test signer name, run-specific marker in DEX and visible TextView."
+  },
+  "verified_suites": {
+    "passed": 14,
+    "failed": 0,
+    "verified_removed_projects": 1,
+    "tests": [
+      "linux_import_upstream",
+      "linux_toolbox_import",
+      "linux_compiler_import_jdk",
+      "linux_compiler_import_android",
+      "linux_compiler_import_gradle",
+      "linux_compiler_import_gradle-maven",
+      "linux_compiler_import_gradle-sdk",
+      "linux_gradle_build_fd_profile",
+      "linux_jdk_aapt2_daemon",
+      "linux_gradle_plain_datagram_close",
+      "linux_gradle_filechannel_transfer",
+      "linux_gradle_version",
+      "linux_kotlin_compile_run",
+      "linux_gradle_zipflinger"
+    ],
+    "zipflinger_payload_bytes": 1048589
+  },
+  "final_existing_suites": {
+    "post-process": {
+      "tests": {
+        "linux_thread_parallel_and_join": "PASS",
+        "linux_guest_fork_exec_debian_hello": "PASS",
+        "linux_project_boundary": "PASS",
+        "linux_import_upstream": "PASS",
+        "linux_signal_delivery_and_return": "PASS",
+        "linux_invalid_image_and_permissions": "PASS",
+        "linux_guest_pselect6_mask_and_readiness": "PASS",
+        "linux_runner_exit_without_stdin_read": "PASS",
+        "linux_guest_fork_stop_continue_wait": "PASS",
+        "linux_local_io_concurrency": "PASS",
+        "linux_guest_fork_unlinked_file_and_cwd": "PASS",
+        "linux_last_instruction_trap": "PASS",
+        "linux_argv_and_reuse": "PASS",
+        "linux_fork_cancel_session_lease": "PASS",
+        "linux_thread_exit_group": "PASS",
+        "linux_runner_timeout": "PASS",
+        "linux_dynamic_hello": "PASS",
+        "linux_runner_cancel_and_closed_stdin": "PASS",
+        "linux_guest_fork_continuation_and_wait": "PASS",
+        "linux_loader_dependency_list": "PASS"
+      },
+      "failed": 0,
+      "passed": 20
+    },
+    "post-distro": {
+      "tests": {
+        "linux_distro_symlink_resolution": "PASS",
+        "linux_guest_exec_compiler_argument_vector": "PASS",
+        "linux_shebang_exec_and_fork_errors": "PASS",
+        "linux_shebang_direct_and_env": "PASS",
+        "linux_toolbox_import": "PASS",
+        "linux_import_upstream": "PASS",
+        "linux_bash_nested_pipeline": "PASS",
+        "linux_alpine_rootfs": "PASS",
+        "linux_tar_vfork_gzip": "PASS",
+        "linux_ash_nested_pipeline": "PASS"
+      },
+      "failed": 0,
+      "passed": 10
+    }
+  },
+  "native_regressions": [
+    "Unprivileged WSL workspace broker regression suite, zero skipped; includes sendfile, explicit/implicit offsets, aborted/replayed/out-of-order bulk writes and concurrent O_APPEND writes.",
+    "Unprivileged WSL network broker suite: 11 groups passed with no FD leak.",
+    "Android NDK API 29 ARM64 build and validation APK build passed. Only Android 15 was tested on hardware."
+  ],
+  "go_tests": "go test ./... passed, using the local Go binary with GOPROXY=off.",
+  "cleanup": {
+    "sample_packages_removed": [
+      "dev.sucrune.compiled",
+      "dev.sucrune.gradleprobe"
+    ],
+    "retained_packages": [
+      "com.sucrune.probe",
+      "com.sucrune.probe.test"
+    ],
+    "temporary_apk_or_ui_files_left_in_data_local_tmp": 0
+  },
+  "validation_apks": [
+    {
+      "filename": "probeapp-validation-androidTest.apk",
+      "bytes": 712702714,
+      "sha256": "900c00c4660caefed25aad28933db13973baa3a85c67a5476c4701b687d51322",
+      "fixture_assets": [
+        "assets/linux-android-build/profile.bin",
+        "assets/linux-distro/files.sha256",
+        "assets/linux-distro/inventory.json",
+        "assets/linux-distro/rootfs.bin",
+        "assets/linux-go-stdlib/profile.bin",
+        "assets/linux-go/profile.bin",
+        "assets/linux-gradle-maven/profile.bin",
+        "assets/linux-gradle-sdk/profile.bin",
+        "assets/linux-gradle/profile.bin",
+        "assets/linux-jdk-zero/profile.bin",
+        "assets/linux-jdk/profile.bin",
+        "assets/linux-native-activity/profile.bin",
+        "assets/linux-toolbox/profile.bin"
+      ]
+    },
+    {
+      "filename": "probeapp-validation.apk",
+      "bytes": 5540284,
+      "sha256": "419afaa2f2e7f115c5d1970ba13ebbcf45de6691eead4492afcfdfb90383d07a",
+      "fixture_assets": []
+    }
+  ],
+  "build_profile": {
+    "descriptor_slots": 512,
+    "syscall_limit": 64000000,
+    "max_execution_ms": 1800000,
+    "default_descriptor_slots": 64,
+    "default_syscall_limit": 1000000,
+    "default_max_execution_ms": 300000
+  },
+  "guest_fixture_files": {
+    "gradle_files": 321,
+    "maven_files": 371,
+    "sdk_files": 28
+  },
+  "compatibility_findings": {
+    "jdk_socket_close": {
+      "nio": "reader woke with SocketException: Socket closed, but the thread calling close threw Error caused by IOException in NativeThread.signal.",
+      "plain_before_socket_options": "PlainDatagramSocketImpl.datagramSocketCreate failed with SocketException: Protocol not available.",
+      "plain_after_socket_options": "Strict test on physical Android 15, 5 passed including imports: real send/receive, a second thread closed the blocked socket without throwing, receive woke with SocketException. Gradle uses -Djdk.net.usePlainDatagramSocketImpl=true with the guest JDK 17."
+    },
+    "gradle_c1": {
+      "vm": "C1, 512 MiB heap",
+      "outcomes": [
+        "Two runs returned runner_exit_code 139; no faulting address captured for those runs.",
+        "Another run reached 25 tasks including Kotlin compilation, then AGP reported AAPT2 daemon startup failed."
+      ],
+      "fd_peak_on_resource_failure": 470,
+      "fd_limit": 512,
+      "later_fault": "A later C1 run with fault diagnostics exited 139 with SIGSEGV/SEGV_ACCERR; instruction and fault address both classified inside the guest arena. Cause not attributed to a particular HotSpot check."
+    },
+    "gradle_interpreter_before_fork_fix": {
+      "vm": "-Xint, 384 MiB heap",
+      "cold": true,
+      "actionable_tasks_executed": 25,
+      "completed_tasks": [
+        ":app:compileDebugKotlin",
+        ":app:mergeExtDexDebug",
+        ":app:processDebugManifestForPackage"
+      ],
+      "failed_task": ":app:processDebugResources",
+      "fd_peak": 467,
+      "fd_limit": 512
+    },
+    "aapt2_daemon": {
+      "before": "In one guest JVM, the AAPT2 compile/link succeeded with no UDP listener. ProcessBuilder.start returned errno 95/EOPNOTSUPP with a bound blocking loopback DatagramSocket.",
+      "after": "Both configurations started the ARM64 daemon. Each received Ready, compiled and linked resources, closed the daemon and verified binary AndroidManifest.xml and resources.arsc. The parent DatagramSocket exchanged bytes afterwards.",
+      "passed": 6,
+      "failed": 0,
+      "verified_removed_projects": 1,
+      "high_fd_case": "With 280 open regular files the guest DatagramSocket was FD 285; the same JVM forked AAPT2, compiled and linked a third resource APK, then exchanged UDP in the parent."
+    },
+    "high_fd": "The raw fork child answers prlimit64 for its own RLIMIT_NOFILE. With 280 files held open before creating the UDP listener, JDK 17 obtained the build profile limit and closed surplus FDs before AAPT2 exec.",
+    "packaging": {
+      "before": "The complete guest build reached :app:packageDebug; com.android.zipflinger.ZipWriter.transferFrom:82 threw IOException: Function not implemented in ZipSourceEntry.writeTo -> SignedApk.add. Isolated JDK transferTo0 and Zipflinger also failed.",
+      "after_scope": "sendfile(71) between regular files owned by the same project broker; explicit and implicit source offsets, real kernel short transfers and EOF. No socket or exported host handle."
+    },
+    "zip_short_write": {
+      "requested_bytes": 262157,
+      "returned_bytes": 4096,
+      "full_read_bytes": 262157,
+      "first_bad_index_in_source_zip": 4096,
+      "first_bad_index_in_target_zip": 4096,
+      "expected_crc32": 3556503158,
+      "observed_source_zip_crc32": 726105384,
+      "agp_assembled": true,
+      "agp_apk_crc_valid": false,
+      "notes": "Zipflinger 9.1.1 computed the CRC on the complete BytesSource but issued a single regular file write. The sandbox's 4 KiB write cap corrupted both the input and copied ZIP; the AGP task itself still reported success."
+    },
+    "installer_transport": {
+      "probe": {
+        "host_bytes": 5540284,
+        "shell_T_stdin_device_bytes": "720",
+        "push_device_bytes": 5540284,
+        "push_device_sha256": "419afaa2f2e7f115c5d1970ba13ebbcf45de6691eead4492afcfdfb90383d07a"
+      },
+      "original": "Windows adb shell -T with piped binary stdin",
+      "corrected": "adb push + device-side size and SHA-256 check before pm install-write; session and temporary APK scoped to this run."
+    },
+    "interpreter_build_before_adb_fix": {
+      "case": "linux_gradle_kotlin_apk",
+      "gradle_tasks": [
+        ":app:compileDebugKotlin",
+        ":app:packageDebug",
+        ":app:assembleDebug"
+      ],
+      "vm": "OpenJDK 17 -Xint, 384 MiB",
+      "cold": true,
+      "bytes": 2433332,
+      "sha256": "1640fa4804d6aa29e9c788202f4830fdd9bba618669a31afcbca96b92692256d",
+      "guest_build_export_dex_marker_passed": true,
+      "first_install_attempt": "Before correcting Windows ADB binary transfer, Package Manager rejected its input with INSTALL_PARSE_FAILED_NOT_APK. The original exported bytes of this run were not retained."
+    }
+  }
+}

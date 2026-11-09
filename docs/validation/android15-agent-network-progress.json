@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "scope": "Android 15 ARM64 ordinary-app Linux/Node, synthetic secret handling, network prerequisites and original DSH native prerequisites. Explicit foreground instrumentation. Intermediate engineering evidence, not an end-to-end Agent or background-reliability claim.",
+  "historical_baseline": "android15-linux-progress.json retains the separate earlier 69/69 build and historical failures; these counts are not added together.",
+  "device_evidence_root": ".build/device-results/agent-20261107/",
+  "runs": [
+    {
+      "file": "linux-network-first.txt", "bytes": 40899,
+      "sha256": "3fee68e9d6cca902858ccb359c10d0368756ee8187f94c8c24e2bf1fc2711ead",
+      "passed": 32, "failed": 1, "total": 33, "instrumentation_code": 0,
+      "failure": "linux_node_network_http_keepalive: guest exit 1, ERR_ASSERTION, observed two server connections where exactly one was required; the earlier success-looking stdout did not override the failed exit. Last unsupported syscall was 207. Subsequent complete runs passed the same workflow."
+    },
+    {
+      "file": "linux-network-flock-second.txt", "bytes": 48099,
+      "sha256": "a39e26634812846fa8d082225cbd51d35d7ffd099aaecbff6502f6e0ecb54f27",
+      "passed": 38, "failed": 1, "total": 39, "instrumentation_code": 0,
+      "failure": "linux_dsh_native_flock_conflict_release: original guest Node failed at fsync with ENOSYS, last unsupported AArch64 syscall 82; the full native-lock workflow did not pass this round. The subsequent complete run passed."
+    },
+    {
+      "file": "linux-network-secrets-third.txt", "bytes": 44507,
+      "sha256": "57ed12dbf237c036d659e937b4ea493306e6dd1125a5da512f852fcebcf37a21",
+      "passed": 41, "failed": 0, "total": 41, "instrumentation_code": -1,
+      "foreground_validation": true,
+      "apk_manifest": "third-build-artifacts.json",
+      "apk_manifest_sha256": "17022697473674eba85167c0bed226ccb172b256248feb2cd99352cba7f6cc3b",
+      "version": "0.8.0-agent-dev",
+      "main_apk_sha256": "b89331ab55f7ff3a53a586b3de84bbb250e7135abee8745fd9c33344aa37900e",
+      "test_apk_sha256": "238a432c5125e72abee24293805d59b55b0a7ac9281bce7df18ca3bb85167aae",
+      "validated": {
+        "linux_node_secret_output_events": "Original Linux Node received synchronous copies of synthetic secretEnv entries. A two-phase guest/manager exchange split exact and JSON-escaped secret text across output reads. Live stdout/stderr, decoded byte events and durable results contained the expected replacements while preserving the HTTP 401 diagnostic; request.env stayed public, secret metadata contained only the sorted names, and a short secret overlapping 'exited'/'linux-jit' did not corrupt typed status.",
+        "linux_node_secret_cancel_cleanup": "Synthetic secret output stayed filtered through cancellation; no input bytes were accepted or written, four cleanup barriers completed and a later ordinary execution reused the project.",
+        "linux_node_network": "Default IP admission denied; explicitly enabled loopback TCP transferred 393221 verified bytes with half-close, two HTTP POSTs reused one connection, refused-connect errno and post-cancel listener cleanup/reuse passed. This run did not validate outbound DNS, UDP or public TLS.",
+        "linux_dsh_profile_install_bundle": "Official guest Node installed 24424 files / 367519382 bytes from the verified 94883559-byte SDK bundle. This used original package contents, not a host Harness run.",
+        "linux_dsh_sdk": "Unmodified sdk-minimal EOF boot and initialize -> response -> shutdown passed. Server deepseek-harness-sdk-runtime/0.0.1; 206 input bytes; zero protocol notifications; exit zero and four barriers. No model, prompt, Agent tool, Web or external request.",
+        "linux_dsh_native_process_report": "Original Node process.report.getReport returned the selected Linux ARM64/glibc facts, including glibc 2.36. The environment/full report was not emitted.",
+        "linux_dsh_native_flock_conflict_release": "Original published system.node async flock succeeded twice on one open description, conflicted with an independent open (EAGAIN/EWOULDBLOCK), released locks on close and passed the workflow's real write/sync and independent artifact check. This is not a multi-process lock test."
+      }
+    }
+  ],
+  "separate_device_mechanism_probe": {
+    "file": "process-capability-first.txt", "bytes": 9225, "sha256": "ef27c22842c6091a6d94b165354ae3aa87e1305c170efe7e87db236902292b9a",
+    "passed": 1, "failed": 0, "instrumentation_code": -1, "capability_result": "mechanisms_verified",
+    "mechanism_verified": true, "cleanup_verified": true, "descendants_reaped": true, "lease_eof": true,
+    "scope": "Separate isolated packaged-runner capability probe measured host fork/clone/re-exec, per-thread seccomp, parent-death cleanup and waitpid. Not included in 41 app cases. No guest continuation/TLS, general Linux fork/exec/wait, PTY/controlling terminal or cross-UID signalling tested."
+  },
+  "separate_host_checks": {
+    "execution_secret_admission_redaction": {"file": ".build/execution-secrets-check.json", "sha256": "4fff30926865bb7f0afc7a83138940df489e90af1eb26d0f524ae5f9a5bdeb50", "passed_groups": 17, "total_groups": 17, "scope": "Synthetic pure JVM only"},
+    "node_secret_workflow_compile": {"file": ".build/node-secrets-workflow-check.json", "sha256": "ff938216ba4c862b98a68e22520980fb07829b785c19e6b9ee42028514df4dcb", "scope": "Six-source strict compilation only; the later device evidence is identified separately above"},
+    "credential_bridge_interop": {"file": ".build/dsh-credential-wire-check.json", "sha256": "841bbd6d425f36114fbe44a42d7dcb1e541d5e9fb88feec4931d64a092d83a60", "passed_groups": 8, "total_groups": 8, "scope": "Actual host Node/JVM synthetic localhost handshake, authenticated transfer, dedicated synthetic sender, substitution/tamper/truncation rejection. No Android peer UID or ADB bridge validation yet."}
+  },
+  "limits": [
+    "No real credential was sent via the bridge and no model request was made in the evidence above. The bridge was not part of the third APK build.",
+    "Synthetic known-value output redaction cannot prevent arbitrary guest transformations, writes to guest files or disclosure by untrusted programs.",
+    "Production fork/exec/PTY/shell workflows and the real original DSH model -> tools -> artifact -> durable session resume loop are not established by these runs.",
+    "The two auxiliary APKs were kept installed under the existing user preference. This record does not claim a cleanup diagnostic or change the historical baseline."
+  ]
+}

@@ -1,0 +1,41 @@
+name: Verify core and native probe
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.x'
+          cache: false
+      - name: Check formatting
+        run: |
+          files="$(gofmt -l cmd internal)"
+          if [ -n "$files" ]; then
+            printf '%s\n' "$files"
+            exit 1
+          fi
+      - run: go vet ./...
+      - name: Test persistence, validation, symlinks and concurrency
+        run: go test -race -count=1 -v ./...
+      - run: go build ./cmd/sucrune
+
+  native-linux:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Linux diagnostic fixture
+        run: |
+          cmake -S native -B .build/native -DCMAKE_BUILD_TYPE=Release
+          cmake --build .build/native --parallel
+      - name: Verify syscall trap and signal restoration
+        run: ctest --test-dir .build/native --output-on-failure

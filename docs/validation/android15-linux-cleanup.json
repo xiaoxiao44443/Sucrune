@@ -1,0 +1,245 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-07",
+  "status": "device_and_host_session_cleanup_verified",
+  "final_application_suites": [
+    {
+      "passed": 36,
+      "failed": 0,
+      "name": "linux-dsh-interactive-final.txt"
+    },
+    {
+      "passed": 12,
+      "failed": 0,
+      "name": "regression-io-final.txt"
+    },
+    {
+      "passed": 11,
+      "failed": 0,
+      "name": "regression-exec-final.txt"
+    },
+    {
+      "passed": 10,
+      "failed": 0,
+      "name": "regression-tools-final.txt"
+    }
+  ],
+  "final_application_total": 69,
+  "foreground_validation": true,
+  "device": {
+    "api": 35,
+    "abi": "arm64-v8a",
+    "page_bytes": 4096,
+    "root_used": false,
+    "version_code": 7,
+    "version_name": "0.7.0-linux-dev",
+    "min_sdk": 29,
+    "target_sdk": 37,
+    "debuggable": false,
+    "installed_packages": [
+      "com.sucrune.probe",
+      "com.sucrune.probe.test"
+    ],
+    "install_mode": "same-signature adb install -r, no uninstall or pm clear",
+    "environment_count": 0,
+    "import_scratch_count": 0,
+    "diagnostics_code": -1,
+    "remaining_probe_or_runner_processes": 0,
+    "execution_history": "preserved by runtime; no application data clear",
+    "screenshots_created": 0
+  },
+  "retained_apks": [
+    {
+      "path": ".build/artifacts/sucrune-linux-dev.apk",
+      "sha256": "daf4596ec3442713bb33c729a8841cf73fddb0668d8cd2ddcee3280b0415d821"
+    },
+    {
+      "path": ".build/artifacts/sucrune-linux-tests.apk",
+      "sha256": "10ff1245870b13a3424e882d1f350fc3fc208a5bc95169ba18956da2bf0b8eaf"
+    }
+  ],
+  "raw_directory": ".build/device-results/linux-20261107",
+  "raw_logs": [
+    {
+      "name": "broker-nonblock.txt",
+      "bytes": 405,
+      "sha256": "5bc9095eadd3ea59465cff648669ed851b3ec6ac095f77533f43cdfd89dcf0ef"
+    },
+    {
+      "name": "final-cleanup-diagnostics.txt",
+      "bytes": 316,
+      "sha256": "c2fad336a0942c5ac0c6eb5c13de294925ce92fa539dc08d97be114cefc03266"
+    },
+    {
+      "name": "linux-dsh-directory.txt",
+      "bytes": 36981,
+      "sha256": "7d1255587a3180120e66559bde813c9988274db5b51d4a4e848746a961a1318c"
+    },
+    {
+      "name": "linux-dsh-first.txt",
+      "bytes": 20390,
+      "sha256": "945d016e1ef8d8893f4b41029d22fc53430faf767e36ed3b8d1ca8b3de8bd46d"
+    },
+    {
+      "name": "linux-dsh-interactive-final.txt",
+      "bytes": 42829,
+      "sha256": "d1c42dbd7ee93f658fe07ad3b34510066347f1e6c68916a29e7faa35554c398a"
+    },
+    {
+      "name": "linux-dsh-interactive-queries.txt",
+      "bytes": 46932,
+      "sha256": "03f476bcfb1b6e1cf4901a68289cbb332e25e3153f45b5702e2751f9474cfa29"
+    },
+    {
+      "name": "linux-dsh-interactive.txt",
+      "bytes": 48484,
+      "sha256": "5645e141bb71db619ce98a103ab5d55f22332f5631894e5abba08565b8a8b3dc"
+    },
+    {
+      "name": "linux-dsh-msync.txt",
+      "bytes": 44375,
+      "sha256": "6f17c95b583ed8f0bdfc2ffe5f096b1eef8e7a708f6d17e06c6fa65566f3a77f"
+    },
+    {
+      "name": "linux-dsh-sdk.txt",
+      "bytes": 44746,
+      "sha256": "d598764c4737eed0f9726396b7d65435948812a58f4e03891d1f35dcdc4773bf"
+    },
+    {
+      "name": "linux-jit-first.txt",
+      "bytes": 29472,
+      "sha256": "617445c846ade9fd48f6c35f893b3db32b3fb762c45c5c6576d642617fc24c6e"
+    },
+    {
+      "name": "linux-node-ioctl.txt",
+      "bytes": 18559,
+      "sha256": "59ca560975aaf68a8fb5109d2197abf59e24aec53786654de6d11df5857a4c08"
+    },
+    {
+      "name": "linux-node-stdio.txt",
+      "bytes": 29472,
+      "sha256": "2a042829645a33a6fbe7c73f9ca48995b50748beb257f8f335be1bb3029ed5fd"
+    },
+    {
+      "name": "linux-node-workflows.txt",
+      "bytes": 34902,
+      "sha256": "150359fb13f42a0d2c4cea01ddb6676fc6ffe4add17af98f5a27bcdf280f55d9"
+    },
+    {
+      "name": "linux-sdk-bundle.txt",
+      "bytes": 39647,
+      "sha256": "98dc94d218984e5481722fbba8da65d589640446c6d7bd2cb90a49d2dda4c0bc"
+    },
+    {
+      "name": "linux-threads-first.txt",
+      "bytes": 22767,
+      "sha256": "a1f7b69b153463a5bcd03a5a274e566086e32433445bb3d2633d09b1ed66be48"
+    },
+    {
+      "name": "network-capability-v2.txt",
+      "bytes": 32487,
+      "sha256": "dee7821ed831a679823b81671391c3758c0a2290584ccb87908d78c812148021"
+    },
+    {
+      "name": "network-capability.txt",
+      "bytes": 9407,
+      "sha256": "decae9f2d8d6b5e310be99fe99b6e954f2eff66d44a6486319b2ff4633183a0d"
+    },
+    {
+      "name": "regression-arm64_elf.txt",
+      "bytes": 7884,
+      "sha256": "e098a12f140e6fed13bb07baf659805ec64d9bfbcf131a2aaca068faff5428e1"
+    },
+    {
+      "name": "regression-exec-final.txt",
+      "bytes": 10930,
+      "sha256": "1e9dfce468ba96092c5a7dbbfa79c1be26491486fe9ffd159aabcb0c5c1e35f1"
+    },
+    {
+      "name": "regression-exec.txt",
+      "bytes": 10724,
+      "sha256": "88698fb3b900d3150edcc4ca96271705b332fdf1ff9c5eefa9e0544bd72548d5"
+    },
+    {
+      "name": "regression-import-index.txt",
+      "bytes": 7315,
+      "sha256": "f0bf17e17fe58da2707a0eaa5c5444879f678d654ccba7407cee79772f2fa8f1"
+    },
+    {
+      "name": "regression-io-final.txt",
+      "bytes": 11992,
+      "sha256": "e6764a8c45bd2c1da4b3247209790ae2d6fa689624576bc7aa7b7e6a8d2e1d5c"
+    },
+    {
+      "name": "regression-io-nonblock.txt",
+      "bytes": 15656,
+      "sha256": "50c37b5b5604f67851d058fe3d8f8424dd6817685ad02886c33a63ac7b1b4fa5"
+    },
+    {
+      "name": "regression-io.txt",
+      "bytes": 11786,
+      "sha256": "7739d01c739add851f8faf734384df5aca8fc70a9a908c2af386179de5dd399e"
+    },
+    {
+      "name": "regression-program.txt",
+      "bytes": 6728,
+      "sha256": "f07f4e4dfd41e42087b9127541fb63af59c644364accbededf805853fe16e235"
+    },
+    {
+      "name": "regression-recovery-prepare.txt",
+      "bytes": 1410,
+      "sha256": "90e6f94b10168b173b6c4e873ddbc5af2beb35463c9d175f3edca95a789fdc85"
+    },
+    {
+      "name": "regression-recovery-verify.txt",
+      "bytes": 903,
+      "sha256": "41d9212f348607340b82b89a720d8d437c914fdfb069dec3fed39552757ee0a8"
+    },
+    {
+      "name": "regression-runtime.txt",
+      "bytes": 9069,
+      "sha256": "f73e858586acc0270e4a7ef453865e8abf545ed72269321d1beb6cef363bd6b4"
+    },
+    {
+      "name": "regression-seccomp_sigsys_return.txt",
+      "bytes": 7772,
+      "sha256": "e28a8d1ce62380be0496e0259f54ca25ee813c8f1739ba2f375ac92c09e7e450"
+    },
+    {
+      "name": "regression-tools-final.txt",
+      "bytes": 10085,
+      "sha256": "fa8af5f339a6599cd57c23193eaef6ad948b71696aa063f9cd2236aec57eb8d7"
+    },
+    {
+      "name": "regression-tools.txt",
+      "bytes": 9887,
+      "sha256": "bbfc6ddd4198e1a240344c814a6abb88570e23dcd42edb49881c1a906713207b"
+    },
+    {
+      "name": "socket-names.txt",
+      "bytes": 206,
+      "sha256": "acd5c9d89fad0d0f07229923bdf20c5189badc49198ee09bbb8b91e7a900ae7e"
+    },
+    {
+      "name": "socket-query-race.txt",
+      "bytes": 206,
+      "sha256": "c9f5951a7b90efc171d55fec139a1495640313ba9995722861d537fae7c5cf0a"
+    }
+  ],
+  "raw_removed": true,
+  "preserved": [
+    "Installed APKs and application data/history",
+    "Signing key",
+    "Source and compact validation evidence",
+    "SDK/JDK/Gradle/Go/Zig caches",
+    "Pinned rootfs and DSH test assets",
+    "Archived final APKs"
+  ],
+  "limits": [
+    "69/69 applies only to the four named suites on the final build; earlier results remain historical",
+    "Standalone UID 2000 socket checks are not application test cases",
+    "No model/tool request, full DSH Agent/Web, translated network, generic subprocess or PTY compatibility claimed",
+    "No background execution guarantee, Android 10 device, 16 KiB device or performance benchmark established"
+  ],
+  "cleaned_at_utc": "2026-11-06T23:49:06.8679241Z"
+}

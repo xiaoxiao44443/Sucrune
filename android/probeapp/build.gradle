@@ -1,0 +1,80 @@
+plugins {
+    id 'com.android.application'
+}
+
+def localTools = new Properties()
+def localToolsFile = rootProject.file('local.properties')
+if (localToolsFile.exists()) {
+    localToolsFile.withInputStream { localTools.load(it) }
+}
+
+android {
+    namespace 'com.sucrune.probe'
+    compileSdk { version = release(37) }
+    ndkVersion '26.3.11579264'
+
+    defaultConfig {
+        applicationId 'com.sucrune.probe'
+        minSdk 29
+        targetSdk 37
+        versionCode 8
+        versionName '0.8.0-agent-dev'
+        testInstrumentationRunner 'com.sucrune.probe.tests.ProbeInstrumentation'
+        ndk { abiFilters 'arm64-v8a', 'x86_64' }
+        externalNativeBuild {
+            cmake { arguments '-DANDROID_STL=none' }
+        }
+    }
+    externalNativeBuild {
+        cmake {
+            path file('../../native/CMakeLists.txt')
+            version providers.gradleProperty('sucrune.cmakeVersion').getOrElse(localTools.getProperty('sucrune.cmakeVersion', '3.22.1'))
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+    buildTypes {
+        release { minifyEnabled false }
+        // Local device verification only: non-debuggable, signed with the local
+        // development key so the matching instrumentation APK can test it.
+        validation {
+            initWith release
+            debuggable false
+            signingConfig signingConfigs.debug
+            matchingFallbacks = ['release']
+        }
+    }
+    testBuildType providers.gradleProperty('sucrune.testBuildType').getOrElse('debug')
+    lint { abortOnError true }
+    sourceSets.main.jniLibs.srcDirs += [rootProject.file('.build/android-core'), rootProject.file('.build/android-runners')]
+    sourceSets.androidTest.assets.srcDirs += [rootProject.file('.build/linux-test-assets')]
+    packaging { jniLibs { useLegacyPackaging = true } }
+}
+
+// The native executable is copied into jniLibs by CMake's post-build step.
+// Make that copy happen before Gradle snapshots the source folder.
+tasks.configureEach { task ->
+    if (task.name.startsWith('merge') && task.name.endsWith('JniLibFolders') && !task.name.contains('AndroidTest')) {
+        def variant = task.name.substring(5, task.name.length() - 'JniLibFolders'.length())
+        task.dependsOn(tasks.matching { it.name == "externalNativeBuild${variant}" })
+    }
+}
+
+tasks.register('verifyGoCore') {
+    doLast {
+        ['arm64-v8a', 'x86_64'].each { abi ->
+            if (!rootProject.file(".build/android-core/${abi}/libsucrune_core.so").exists()) {
+                throw new GradleException('Build the Go core first with scripts/build-go-android.ps1, or use scripts/build-android.ps1.')
+            }
+        }
+    }
+}
+tasks.named('preBuild').configure { dependsOn('verifyGoCore') }
+
+kotlin {
+    compilerOptions {
+        jvmTarget = org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17
+    }
+}
