@@ -746,17 +746,25 @@ static int64_t path_operation(struct broker *b, const struct sucrune_request *r,
     int parent = walk_parent(b, r->operation == 49U ? AT_FDCWD : r->args[0], input, follow,
                              mutation, leaf, &must_be_directory);
     if (parent < 0) return parent;
+    if (r->operation == 34U) {
+        /* mkdir reports EEXIST before checking permission to create a new name.
+         * mkdir -p relies on this for existing ancestors outside its write scope. */
+        struct stat existing;
+        if (fstatat(parent, leaf, &existing, AT_SYMLINK_NOFOLLOW) == 0) {
+            close(parent); return -EEXIST;
+        }
+        if (errno != ENOENT) { error = errno; close(parent); return -error; }
+    }
     bool scoped_open = open && b->write_scope != SUCRUNE_WRITE_UNRESTRICTED &&
         !(r->args[1] & O_PATH) && (r->args[1] & (O_ACCMODE | O_CREAT | O_TRUNC));
     if (mutation || scoped_open) {
         int access = write_access(b, parent);
         if (access < 0) { close(parent); return access; }
     }
-    if (must_be_directory && mutation) {
+    if (must_be_directory && mutation && r->operation != 34U) {
         struct stat st;
-        int rc = fstatat(parent, leaf, &st, AT_SYMLINK_NOFOLLOW);
-        if (rc < 0 && (errno != ENOENT || r->operation != 34U)) { error = errno; close(parent); return -error; }
-        if (rc == 0 && !S_ISDIR(st.st_mode)) { close(parent); return -ENOTDIR; }
+        if (fstatat(parent, leaf, &st, AT_SYMLINK_NOFOLLOW) < 0) { error = errno; close(parent); return -error; }
+        if (!S_ISDIR(st.st_mode)) { close(parent); return -ENOTDIR; }
     }
     int64_t result = -ENOSYS;
     if (open) {

@@ -1573,6 +1573,18 @@ static void scoped_writes(const char *root) {
         struct client c;
         c.socket = sucrune_workspace_broker_scoped(root, &c.done, 0, 0, SUCRUNE_WORKSPACE_LINUX, (enum sucrune_write_scope)scope);
         CHECK(c.socket >= 0 && path_operation(c, 49, "/workspace", 0) == 0);
+        CHECK(path_operation(c, 34, "/", 0) == -EEXIST);
+        CHECK(path_operation(c, 34, "/workspace", 0) == -EEXIST);
+        CHECK(path_operation(c, 34, "/workspace-else", 0) == -EEXIST);
+        CHECK(path_operation(c, 34, "/workspace-else/sentinel", 0) == -EEXIST);
+        CHECK(path_operation(c, 34, "/workspace/link", 0) == -EEXIST);
+        int64_t created = path_operation(c, 34, "/workspace/Desktop", 0);
+        if (scope == SUCRUNE_WRITE_PROJECT) {
+            CHECK(created == 0 && path_operation(c, 34, "/workspace/Desktop", 0) == -EEXIST);
+            CHECK(path_operation(c, 34, "/workspace/Desktop/nested/", 0) == 0);
+            CHECK(path_operation(c, 35, "/workspace/Desktop/nested", AT_REMOVEDIR) == 0);
+            CHECK(path_operation(c, 35, "/workspace/Desktop", AT_REMOVEDIR) == 0);
+        } else CHECK(created == -EACCES);
         int64_t readfd = path_operation(c, 56, "/workspace-else/sentinel", O_RDONLY);
         CHECK(readfd >= 3 && file_operation(c, 52, readfd, 0777, 0).result == -EACCES);
         CHECK(path_operation(c, 56, "/workspace-else/sentinel", O_RDWR | O_TRUNC) == -EACCES);
@@ -1679,6 +1691,9 @@ static void mounted_tree(const char *root,const char *outside) {
     reader.socket=sucrune_workspace_broker_mounted(root,&reader.done,0,0,SUCRUNE_WORKSPACE_LINUX,
                                                   SUCRUNE_WRITE_READ_ONLY,NULL,&mount);
     CHECK(reader.socket>=0);
+    CHECK(path_operation(reader,34,"/workspace",0)==-EEXIST);
+    CHECK(path_operation(reader,34,"/workspace/sentinel",0)==-EEXIST);
+    CHECK(path_operation(reader,34,"/workspace/new-dir",0)==-EACCES);
     int exported=-1;
     CHECK(open_read(reader,"/mounted-alias/sentinel",O_RDONLY,&exported)>=3 && exported>=0);
     CHECK((fcntl(exported,F_GETFL)&O_ACCMODE)==O_RDONLY && close(exported)==0);
@@ -1719,6 +1734,8 @@ static void mounted_tree(const char *root,const char *outside) {
     CHECK(ll_wire(c,445,set,1,LL_READ_DIR,dir)==-EOPNOTSUPP);
     add_path_rule(c,set,"/workspace",LL_READ_DIR|LL_READ_FILE);
     CHECK(ll_wire(c,167,38,1,0,0)==0 && ll_wire(c,446,set,0,0,0)==0);
+    CHECK(path_operation(c,34,"/workspace/nested/.",0)==-EEXIST);
+    CHECK(path_operation(c,34,"/workspace/nested/blocked",0)==-EACCES);
     CHECK(path_operation(c,56,"nested/b",O_WRONLY|O_TRUNC)==-EACCES);
     CHECK(path_operation(c,35,"nested/b",0)==-EACCES);
     struct client child=landlock_fork(c);
@@ -1815,6 +1832,11 @@ static void landlock_policy(const char *workspace) {
     CHECK(ll_wire(c, SUCRUNE_BROKER_LL_SPECIAL, LL_OTHER_SPECIAL, LL_WRITE_FILE, 0, 0) == -EACCES);
     CHECK(path_operation(c, SUCRUNE_BROKER_OPEN_EXEC, "ll-other/tool", O_RDONLY) >= 3);
     CHECK(path_operation(c, 56, "ll-other/x", O_CREAT | O_RDWR) == -EACCES);
+    CHECK(path_operation(c, 34, "/", 0) == -EEXIST);
+    CHECK(path_operation(c, 34, "/ll-other", 0) == -EEXIST);
+    CHECK(path_operation(c, 34, "/ll-other/blocked", 0) == -EACCES);
+    CHECK(path_operation(c, 34, "/ll-src/nested", 0) == 0);
+    CHECK(path_operation(c, 35, "/ll-src/nested", AT_REMOVEDIR) == 0);
     CHECK(path_operation(c, 56, "ll-src/new", O_CREAT | O_RDWR) >= 3);
     CHECK(path_operation(c, 56, "ll-other/tool", O_RDWR | O_TRUNC) == -EACCES);
     int64_t limited = path_operation(c, 56, "ll-other/tool", O_RDWR);

@@ -302,13 +302,18 @@ static int mount_path_operation(struct broker *b,const struct sucrune_request *r
     case 56: case SUCRUNE_BROKER_OPEN_READ: case SUCRUNE_BROKER_OPEN_EXEC:
         return mount_open(b,r,send_fd);
     case 38: return mount_rename(b,r);
-    case 34: case 35:
+    case 34: {
+        struct stat existing;
+        rc=mount_stat(b,b->mount_path,&existing);
+        if (!rc) return -EEXIST;
+        if (rc!=-ENOENT || !*b->mount_path || b->mount_dot) return rc;
+        if (b->write_scope==SUCRUNE_WRITE_READ_ONLY) return -EACCES;
+        rc=mount_right(b,LL_MAKE_DIR);
+        return rc<0 ? rc : b->family->mount.mkdir(b->family->mount.context,b->mount_path);
+    }
+    case 35:
         if (!*b->mount_path || b->mount_dot) return -EBUSY;
         if (b->write_scope==SUCRUNE_WRITE_READ_ONLY) return -EACCES;
-        if (r->operation==34) {
-            rc=mount_right(b,LL_MAKE_DIR);
-            return rc<0 ? rc : b->family->mount.mkdir(b->family->mount.context,b->mount_path);
-        }
         if (r->args[1]!=0 && r->args[1]!=AT_REMOVEDIR) return -EINVAL;
         if (b->mount_requires_dir && r->args[1]!=AT_REMOVEDIR) return -EISDIR;
         rc=mount_right(b,r->args[1]?LL_REMOVE_DIR:LL_REMOVE_FILE);

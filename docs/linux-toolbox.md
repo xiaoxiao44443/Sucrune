@@ -82,4 +82,4 @@ Android 15 已跑通 Bash、ash 命令替换内的多级管道，以及 BusyBox 
 
 带 `#!` 的可执行脚本可作为启动入口，解释器和 `/usr/bin/env` 搜索的命令均来自项目。参见[Alpine rootfs 导入与验收](linux-rootfs-import.md)。
 
-TCP 支持先创建普通套接字，再用 `fcntl` 或 `FIONBIO` 切换为非阻塞模式后连接。这覆盖了本次 libcurl 的调用方式。保持阻塞模式直接连接或监听仍会返回 `EOPNOTSUPP`。Linux 主线程的 ELF 原地替换限于没有其他未汇合的 guest 线程。固定地址保留区可以在空闲地址范围扩展；单次执行链限 32 次替换。
+TCP 客户端可直接使用阻塞 `connect`，或通过 `fcntl`、`FIONBIO` 切换非阻塞连接。两种模式均由 broker 校验目的地址。阻塞连接及常用读写在 worker 等待就绪，已连接流支持无目标地址和辅助数据的 `sendmsg`、`recvmsg`。监听和跨 `fork` 继承 TCP 仍要求非阻塞模式。Linux 主线程的 ELF 原地替换限于没有其他未汇合的 guest 线程。固定地址保留区可以在空闲地址范围扩展；单次执行链限 32 次替换。

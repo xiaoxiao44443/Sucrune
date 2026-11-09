@@ -31,6 +31,20 @@ internal fun linuxShebangCases(client: RuntimeClient, project: String, execute: 
             lines.drop(1) == listOf(cwd, "shebang", "/usr/bin/python3")) { lines.toString() }
     }
     return listOf(
+        "linux_guest_exec_long_strings" to {
+            client.makeDirectory(project, cwd)
+            val code = """
+                import os, sys
+                # Construct the large values inside the guest, as a shell or Node child_process.spawn does.
+                script = "import os; assert os.environ['MARK'] == 'env-' * 2048; print('long exec ok')" + "\n#" + 'x' * 45000
+                def replace():
+                    os.execve(sys.executable, [sys.executable, '-c', script], {'MARK': 'env-' * 2048})
+            """.trimIndent()
+            check(run("/usr/bin/python3", listOf("-c", code + "\nreplace()")) == listOf("long exec ok"))
+            val fork = "\npid=os.fork()\nif pid==0: replace()\nassert os.waitpid(pid,0)[1]==0"
+            check(run("/usr/bin/python3", listOf("-c", code + fork)) == listOf("long exec ok"))
+            "Both exec paths preserved a 45 KiB script argument and an 8 KiB environment value."
+        },
         "linux_guest_exec_compiler_argument_vector" to {
             client.makeDirectory(project, cwd)
             script("args.py", "#!/usr/bin/python3\nimport sys\n" +

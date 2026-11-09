@@ -196,8 +196,18 @@ static RAW_FN void bytes_copy(void *to,const void *from,size_t count) {
     for(size_t i=0;i<count;i++) dst[i]=src[i];
 }
 static RAW_FN long guest_string(uintptr_t addr,char *dest,size_t size) {
+    size_t checked=0;
+    const size_t page=active.launch->snapshot.space->page_size;
     for(size_t i=0;i<size;i++) {
-        if(addr>UINTPTR_MAX-i || !allowed(addr+i,1U,0)) return -EFAULT;
+        if(i==checked) {
+            if(addr>UINTPTR_MAX-i) return -EFAULT;
+            /* VMAs are page-aligned. Validate each page as we reach it, without
+             * reading the next page when the string ends at its boundary. */
+            size_t span=page-((addr+i)&(page-1U));
+            if(span>size-i) span=size-i;
+            if(!allowed(addr+i,span,0)) return -EFAULT;
+            checked=i+span;
+        }
         dest[i]=*(volatile char *)(addr+i);
         if(dest[i]=='\0') return (long)(i+1U);
     }
@@ -687,7 +697,7 @@ static RAW_FN long add_exec_vector(uintptr_t vector,uint32_t limit,uint32_t *cou
         bytes_copy(&pointer,(const void *)(vector+offset),sizeof(pointer));
         if(!pointer) return 0;
         if(i==limit) return -E2BIG;
-        long result=add_exec_string(pointer,4096U,0);
+        long result=add_exec_string(pointer,SUCRUNE_GUEST_EXEC_TEXT,0);
         if(result<0) return result;
         (*count)++;
     }

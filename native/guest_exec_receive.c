@@ -103,9 +103,9 @@ int sucrune_exec_check_packet(const struct sucrune_guest_exec *p,size_t bytes,in
     size_t at=0;
     *path=take(p,&at,SUCRUNE_PATH_LIMIT-1U);
     if (!*path || **path=='\0') return EINVAL;
-    for (unsigned int i=0;i<p->argc;i++) if ((argv[i]=take(p,&at,4096U))==NULL) return EPROTO;
+    for (unsigned int i=0;i<p->argc;i++) if ((argv[i]=take(p,&at,SUCRUNE_GUEST_EXEC_TEXT-1U))==NULL) return EPROTO;
     if (p->script && (!argv[0][0] || strlen(argv[0]) >= SUCRUNE_PATH_LIMIT)) return EPROTO;
-    for (unsigned int i=0;i<p->envc;i++) if ((envp[i]=take(p,&at,4096U))==NULL) return EPROTO;
+    for (unsigned int i=0;i<p->envc;i++) if ((envp[i]=take(p,&at,SUCRUNE_GUEST_EXEC_TEXT-1U))==NULL) return EPROTO;
     return at==p->text_size ? 0 : EPROTO;
 }
 int sucrune_exec_restore_fds(const struct sucrune_guest_exec *p,struct sucrune_fd_table *t,

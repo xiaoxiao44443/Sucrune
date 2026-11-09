@@ -1069,23 +1069,10 @@ static int64_t descriptor_fcntl(struct shell_state *s, const uint64_t args[6]) {
     if (s->linux_mode && resource->kind != SUCRUNE_FD_BROKER && resource->handle >= 0) {
         if (args[1] == F_SETFL && (args[2] & ~(uint64_t)(O_ACCMODE | O_APPEND | O_NONBLOCK | O_LARGEFILE | O_CLOEXEC)) != 0U) return -EINVAL;
         int network_type = sucrune_guest_network_type(&s->network, resource->handle);
-        if (network_type == SOCK_DGRAM) {
+        if (network_type == SOCK_DGRAM || network_type == SOCK_STREAM) {
             int physical = fcntl(resource->handle, F_GETFL);
             if (physical < 0) return -errno;
             if (args[1] == F_GETFL) return (physical & ~O_NONBLOCK) | (resource->status_flags & O_NONBLOCK);
-            if (fcntl(resource->handle, F_SETFL, (int)args[2] | O_NONBLOCK) != 0) return -errno;
-            resource->status_flags = (resource->status_flags & ~(O_NONBLOCK | O_APPEND)) | (int)(args[2] & (O_NONBLOCK | O_APPEND));
-            return 0;
-        }
-        if (network_type == SOCK_STREAM) {
-            int physical = fcntl(resource->handle, F_GETFL);
-            if (physical < 0) return -errno;
-            if (args[1] == F_GETFL)
-                return (physical & ~O_NONBLOCK) | (resource->status_flags & O_NONBLOCK);
-            // The transport requires nonblocking I/O. An ordinary new socket can
-            // be configured before connect, as done by libcurl.
-            if ((args[2] & O_NONBLOCK) == 0U && (resource->status_flags & O_NONBLOCK) != 0)
-                return -EOPNOTSUPP;
             if (fcntl(resource->handle, F_SETFL, (int)args[2] | O_NONBLOCK) != 0) return -errno;
             resource->status_flags = (resource->status_flags & ~(O_NONBLOCK | O_APPEND)) | (int)(args[2] & (O_NONBLOCK | O_APPEND));
             return 0;
@@ -1111,6 +1098,32 @@ static int64_t descriptor_fcntl(struct shell_state *s, const uint64_t args[6]) {
     return 0;
 }
 
+/* The broker owns a nonblocking socket. A guest blocking call sleeps on
+ * the same open description without stopping the other guest threads. */
+static int wait_stream_ready(struct shell_state *s, uint64_t fd, struct sucrune_fd_resource *resource, short events) {
+    int held = sucrune_fds_hold(&s->descriptors, fd);
+    if (held < 0) return held;
+    struct pollfd item = {.fd = resource->handle, .events = events};
+    int result = 0;
+    for (;;) {
+        collect_child_signal(s);
+        struct sucrune_signal_thread *signals = current_signals(s);
+        if (signals->pending & ~signals->mask) { result = -EINTR; break; }
+        (void)pthread_mutex_unlock(&s->state_lock);
+        int ready = poll(&item, 1, 100);
+        int saved = errno;
+        (void)pthread_mutex_lock(&s->state_lock);
+        if (sucrune_fds_get(&s->descriptors, fd) != resource) { result = -EBADF; break; }
+        if (ready < 0) { result = -saved; break; }
+        if (ready > 0) {
+            if (item.revents & POLLNVAL) result = -EBADF;
+            break;
+        }
+    }
+    int dropped = sucrune_fds_drop(&s->descriptors, (unsigned int)held);
+    return result < 0 ? result : dropped;
+}
+
 struct sucrune_arm64_msghdr {
     uint64_t name;
     uint32_t name_length, padding;
@@ -1118,6 +1131,69 @@ struct sucrune_arm64_msghdr {
     uint32_t flags, tail_padding;
 };
 _Static_assert(sizeof(struct sucrune_arm64_msghdr) == 56U, "ARM64 msghdr ABI");
+
+static int guest_message_vectors(struct shell_state *s, const struct sucrune_arm64_msghdr *wire,
+        bool receiving, struct iovec *vectors, uint64_t *total_bytes) {
+    struct {uint64_t pointer, length;} item;
+    if (wire->vector_count > 1024U) return -EMSGSIZE;
+    size_t count = (size_t)wire->vector_count;
+    if (count != 0U && !guest_memory(s, (uintptr_t)wire->vectors, count * sizeof(item), false)) return -EFAULT;
+    uint64_t total = 0U;
+    for (size_t index = 0; index < count; index++) {
+        copy_bytes((unsigned char *)&item, (const void *)(uintptr_t)(wire->vectors + index * sizeof(item)), sizeof(item));
+        if (item.length > INT64_MAX - total) return -EMSGSIZE;
+        if (item.length != 0U && !guest_memory(s, (uintptr_t)item.pointer, (size_t)item.length, receiving)) return -EFAULT;
+        vectors[index] = (struct iovec){.iov_base = (void *)(uintptr_t)item.pointer, .iov_len = (size_t)item.length};
+        total += item.length;
+    }
+    *total_bytes = total;
+    return 0;
+}
+
+/* Only connected payload I/O is admitted. Never pass a guest sockaddr,
+ * ancillary data, or unvalidated guest iovec to the host socket. */
+static int64_t guest_stream_message(struct shell_state *s, int operation, uint64_t *args,
+        const struct sucrune_arm64_msghdr *vector_request) {
+    bool receiving = operation == 212;
+    int allowed = MSG_DONTWAIT | (receiving ? MSG_PEEK : MSG_NOSIGNAL | MSG_MORE);
+    if ((args[2] & ~(uint64_t)allowed) != 0U) return -EOPNOTSUPP;
+    for (;;) {
+        struct sucrune_fd_resource *resource = sucrune_fds_get(&s->descriptors, args[0]);
+        if (resource == NULL) return -EBADF;
+        if (resource->kind != SUCRUNE_FD_LOCAL ||
+            sucrune_guest_network_type(&s->network, resource->handle) != SOCK_STREAM) return -ENOTSOCK;
+        struct sucrune_arm64_msghdr wire;
+        if (vector_request != NULL) wire = *vector_request;
+        else {
+            if (!guest_memory(s, (uintptr_t)args[1], sizeof(wire), false) ||
+                (receiving && !guest_memory(s, (uintptr_t)args[1], sizeof(wire), true))) return -EFAULT;
+            copy_bytes((unsigned char *)&wire, (const void *)(uintptr_t)args[1], sizeof(wire));
+        }
+        if (wire.name || wire.name_length || wire.control || wire.control_length) return -EOPNOTSUPP;
+        struct iovec vectors[1024];
+        uint64_t total;
+        int checked = guest_message_vectors(s, &wire, receiving, vectors, &total);
+        if (checked < 0) return checked;
+        struct msghdr message = {.msg_iov = vectors, .msg_iovlen = (size_t)wire.vector_count};
+        int flags = (int)args[2] | MSG_DONTWAIT;
+        ssize_t result = receiving ? recvmsg(resource->handle, &message, flags) :
+            sendmsg(resource->handle, &message, flags | MSG_NOSIGNAL);
+        if (result >= 0) {
+            if (receiving && vector_request == NULL) {
+                uint32_t flags_out = (uint32_t)message.msg_flags;
+                copy_bytes((unsigned char *)(uintptr_t)args[1] + offsetof(struct sucrune_arm64_msghdr, flags),
+                    (const unsigned char *)&flags_out, sizeof(flags_out));
+            }
+            return result;
+        }
+        int error = errno;
+        if (error != EAGAIN || (args[2] & MSG_DONTWAIT) || (resource->status_flags & O_NONBLOCK)) return -error;
+        /* wait_stream_ready pins the description and releases state_lock.
+         * Re-read and validate all guest pointers before another attempt. */
+        int ready = wait_stream_ready(s, args[0], resource, receiving ? POLLIN : POLLOUT);
+        if (ready < 0) return ready;
+    }
+}
 
 /* All admitted IP sockets are nonblocking. Keep the state lock across these
  * short calls so the canonical token cannot disappear/reuse between routing,
@@ -1170,19 +1246,9 @@ retry:
             copy_bytes((unsigned char *)&wire, (const void *)(uintptr_t)args[1], sizeof(wire));
         }
         if (wire.control_length != 0U) return -EOPNOTSUPP;
-        if (wire.vector_count > 1024U) return -EMSGSIZE;
+        int checked = guest_message_vectors(s, &wire, receiving, vectors, &total_bytes);
+        if (checked < 0) return checked;
         vector_count = (size_t)wire.vector_count;
-        struct {uint64_t pointer, length;} item;
-        if (vector_count != 0U && !guest_memory(s, (uintptr_t)wire.vectors, vector_count * sizeof(item), false)) return -EFAULT;
-        uint64_t total = 0U;
-        for (size_t index = 0U; index < vector_count; index++) {
-            copy_bytes((unsigned char *)&item, (const void *)(uintptr_t)(wire.vectors + index * sizeof(item)), sizeof(item));
-            if (item.length > INT64_MAX - total) return -EMSGSIZE;
-            if (item.length != 0U && !guest_memory(s, (uintptr_t)item.pointer, (size_t)item.length, receiving)) return -EFAULT;
-            vectors[index] = (struct iovec){.iov_base = (void *)(uintptr_t)item.pointer, .iov_len = (size_t)item.length};
-            total += item.length;
-        }
-        total_bytes = total;
         address_pointer = wire.name;
         address_capacity = wire.name_length;
     } else {
@@ -1482,7 +1548,7 @@ static int64_t guest_call(struct shell_state *s, int operation, uint64_t *args) 
             if (resource == NULL) return -EBADF;
             if (!sucrune_guest_network_contains(&s->network, resource->handle) || resource->kind != SUCRUNE_FD_LOCAL)
                 return -ENOTSOCK;
-            if ((operation == 203 || operation == 201) && (resource->status_flags & O_NONBLOCK) == 0 &&
+            if (operation == 201 && (resource->status_flags & O_NONBLOCK) == 0 &&
                 sucrune_guest_network_type(&s->network, resource->handle) == SOCK_STREAM) return -EOPNOTSUPP;
             size_t unused = 0;
             if (operation == 200 || operation == 203) {
@@ -1490,8 +1556,18 @@ static int64_t guest_call(struct shell_state *s, int operation, uint64_t *args) 
                 if (!guest_memory(s, (uintptr_t)args[1], (size_t)args[2], false)) return -EFAULT;
                 unsigned char address[SUCRUNE_SOCKET_ADDRESS_LIMIT];
                 copy_bytes(address, (const void *)(uintptr_t)args[1], (size_t)args[2]);
-                return sucrune_guest_network_address(&s->network, resource->handle, operation == 203,
+                int result = sucrune_guest_network_address(&s->network, resource->handle, operation == 203,
                     address, (size_t)args[2]);
+                if (operation != 203 || result != -EINPROGRESS || (resource->status_flags & O_NONBLOCK) ||
+                    sucrune_guest_network_type(&s->network, resource->handle) != SOCK_STREAM) return result;
+                result = wait_stream_ready(s, args[0], resource, POLLOUT);
+                if (result < 0) return result;
+                int socket_error = 0;
+                size_t length = 0;
+                result = sucrune_guest_network_control(&s->network, resource->handle, SUCRUNE_NET_GETOPT,
+                    SOL_SOCKET, SO_ERROR, NULL, 0, &socket_error, sizeof(socket_error), &length);
+                if (result < 0) return result;
+                return length == sizeof(socket_error) ? -socket_error : -EPROTO;
             }
             if (operation == 208) {
                 if (args[4] < sizeof(uint32_t)) return -EINVAL;
@@ -1510,7 +1586,8 @@ static int64_t guest_call(struct shell_state *s, int operation, uint64_t *args) 
             struct sucrune_fd_resource *resource = sucrune_fds_get(&s->descriptors, args[0]);
             if (resource == NULL) return -EBADF;
             if (resource->kind != SUCRUNE_FD_LOCAL || resource->handle < 0) return -ENOTSOCK;
-            if (sucrune_guest_network_type(&s->network, resource->handle) == SOCK_DGRAM)
+            int network_type = sucrune_guest_network_type(&s->network, resource->handle);
+            if (network_type == SOCK_DGRAM)
                 return guest_datagram(s, operation, args, NULL);
             if (args[2] > INT64_MAX) return -EINVAL;
             int allowed = operation == 206 ? MSG_DONTWAIT | MSG_NOSIGNAL | MSG_MORE :
@@ -1519,6 +1596,7 @@ static int64_t guest_call(struct shell_state *s, int operation, uint64_t *args) 
             /* Addressed datagrams require the manager's destination policy.
              * Do not let an explicit sendto destination bypass connect. */
             if (operation == 206 && args[4] != 0U) return -EOPNOTSUPP;
+retry_stream_data:
             if (args[2] != 0U && !guest_memory(s, (uintptr_t)args[1], (size_t)args[2], operation == 207)) return -EFAULT;
             uint32_t capacity = 0;
             if (operation == 207 && args[4] != 0U) {
@@ -1529,20 +1607,33 @@ static int64_t guest_call(struct shell_state *s, int operation, uint64_t *args) 
                 size_t checked = capacity < sizeof(struct sockaddr_storage) ? capacity : sizeof(struct sockaddr_storage);
                 if (checked != 0U && !guest_memory(s, (uintptr_t)args[4], checked, true)) return -EFAULT;
             }
-            int retained = fcntl(resource->handle, F_DUPFD_CLOEXEC, 16);
-            if (retained < 0) return -errno;
+            bool tcp = network_type == SOCK_STREAM;
+            int retained = resource->handle;
+            if (!tcp) {
+                retained = fcntl(resource->handle, F_DUPFD_CLOEXEC, 16);
+                if (retained < 0) return -errno;
+                (void)pthread_mutex_unlock(&s->state_lock);
+            }
             struct sockaddr_storage address;
             socklen_t length = sizeof(address);
-            (void)pthread_mutex_unlock(&s->state_lock);
+            int io_flags = (int)args[3] | (tcp ? MSG_DONTWAIT : 0);
             ssize_t result;
             do {
                 if (operation == 206) result = sendto(retained, (const void *)(uintptr_t)args[1], (size_t)args[2],
-                    (int)args[3] | MSG_NOSIGNAL, NULL, 0);
-                else result = recvfrom(retained, (void *)(uintptr_t)args[1], (size_t)args[2], (int)args[3],
+                    io_flags | MSG_NOSIGNAL, NULL, 0);
+                else result = recvfrom(retained, (void *)(uintptr_t)args[1], (size_t)args[2], io_flags,
                     args[4] == 0U ? NULL : (struct sockaddr *)&address, args[4] == 0U ? NULL : &length);
             } while (result < 0 && errno == EINTR);
-            int saved = errno; (void)close(retained);
-            (void)pthread_mutex_lock(&s->state_lock);
+            int saved = errno;
+            if (!tcp) {
+                (void)close(retained);
+                (void)pthread_mutex_lock(&s->state_lock);
+            } else if (result < 0 && saved == EAGAIN && !(resource->status_flags & O_NONBLOCK) &&
+                !(args[3] & MSG_DONTWAIT)) {
+                int ready = wait_stream_ready(s, args[0], resource, operation == 206 ? POLLOUT : POLLIN);
+                if (ready < 0) return ready;
+                goto retry_stream_data;
+            }
             if (result < 0) return -saved;
             if (operation == 207 && args[4] != 0U) {
                 size_t copied = capacity < length ? capacity : length;
@@ -1555,8 +1646,15 @@ static int64_t guest_call(struct shell_state *s, int operation, uint64_t *args) 
             }
             return result;
         }
-        case 211: case 212: case 269:
-            return s->linux_mode ? guest_datagram(s, operation, args, NULL) : -ENOSYS;
+        case 211: case 212: case 269: {
+            if (!s->linux_mode) return -ENOSYS;
+            struct sucrune_fd_resource *resource = sucrune_fds_get(&s->descriptors, args[0]);
+            if (resource == NULL) return -EBADF;
+            if (operation != 269 && resource->kind == SUCRUNE_FD_LOCAL &&
+                sucrune_guest_network_type(&s->network, resource->handle) == SOCK_STREAM)
+                return guest_stream_message(s, operation, args, NULL);
+            return guest_datagram(s, operation, args, NULL);
+        }
         case 202: case 242: {
             if (!s->linux_mode) return -ENOSYS;
             struct sucrune_fd_resource *resource = sucrune_fds_get(&s->descriptors, args[0]);
@@ -1816,11 +1914,15 @@ static int64_t guest_call(struct shell_state *s, int operation, uint64_t *args) 
             struct guest_iovec { uint64_t address, length; } vector;
             struct sucrune_fd_resource *resource = sucrune_fds_get(&s->descriptors, args[0]);
             if (resource == NULL) return -EBADF;
-            if (s->linux_mode && resource->kind == SUCRUNE_FD_LOCAL &&
-                sucrune_guest_network_type(&s->network, resource->handle) == SOCK_DGRAM) {
-                struct sucrune_arm64_msghdr datagram = {.vectors = args[1], .vector_count = args[2]};
+            if (s->linux_mode && resource->kind == SUCRUNE_FD_LOCAL) {
+                int type = sucrune_guest_network_type(&s->network, resource->handle);
+                struct sucrune_arm64_msghdr wire = {.vectors = args[1], .vector_count = args[2]};
                 uint64_t call[6] = {args[0], 0U, 0U, 0U, 0U, 0U};
-                return guest_datagram(s, operation == 65 ? 212 : 211, call, &datagram);
+                if (type == SOCK_DGRAM) return guest_datagram(s, operation == 65 ? 212 : 211, call, &wire);
+                if (type == SOCK_STREAM) {
+                    if (args[2] > 1024U) return -EINVAL;
+                    return guest_stream_message(s, operation == 65 ? 212 : 211, call, &wire);
+                }
             }
             if (resource->kind != SUCRUNE_FD_BROKER && resource->kind != SUCRUNE_FD_LOCAL &&
                 ((operation == 65 && resource->kind != SUCRUNE_FD_INPUT) ||
@@ -2132,9 +2234,9 @@ static int64_t guest_call(struct shell_state *s, int operation, uint64_t *args) 
                 if (resource->read_fd >= 0) return got;
             }
             if (s->linux_mode && resource->kind == SUCRUNE_FD_LOCAL && operation != 61 &&
-                sucrune_guest_network_type(&s->network, resource->handle) == SOCK_DGRAM) {
+                sucrune_guest_network_contains(&s->network, resource->handle)) {
                 uint64_t call[6] = {args[0], args[1], args[2], 0U, 0U, 0U};
-                return guest_datagram(s, operation == 63 ? 207 : 206, call, NULL);
+                return guest_call(s, operation == 63 ? 207 : 206, call);
             }
             if (s->linux_mode && operation == 63 && args[2] > SUCRUNE_IO_LIMIT &&
                 resource->kind == SUCRUNE_FD_BROKER && !sucrune_pty_slave_handle(resource->handle))
