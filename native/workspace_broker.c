@@ -1200,7 +1200,10 @@ static void dispatch(struct broker *b, const struct sucrune_request *r, struct s
                 struct file_status *state=b->status[r->args[0]];
                 (void)pthread_mutex_lock(&state->lock);
                 int flags = fcntl(file, F_GETFL);
-                out->result = flags < 0 ? -errno : (flags & ~O_NONBLOCK) | state->guest_nonblock;
+                /* The kernel can report extra bits, including a large-file bit
+                 * even when the host libc defines O_LARGEFILE as zero. */
+                const int visible = O_ACCMODE | O_APPEND | O_DIRECTORY | O_NOFOLLOW | O_PATH | O_LARGEFILE;
+                out->result = flags < 0 ? -errno : (flags & visible) | state->guest_nonblock;
                 (void)pthread_mutex_unlock(&state->lock);
             } else if (r->args[1] == F_SETFL) {
                 /* Append is passed through; nonblock is virtualized for these
