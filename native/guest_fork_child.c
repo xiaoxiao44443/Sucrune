@@ -29,10 +29,14 @@
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <sys/resource.h>
+#include <sys/times.h>
+#include <sys/time.h>
 #include <sys/uio.h>
 #include <poll.h>
 #include <sys/syscall.h>
 #include <sys/utsname.h>
+#include <sys/sysinfo.h>
+#include <sys/vfs.h>
 #include <time.h>
 #include <sys/file.h>
 #include <ucontext.h>
@@ -46,7 +50,7 @@
 struct child_state {
     uintptr_t gate_tls, gate_scs, supervisor_tls, supervisor_scs;
     struct sucrune_fork_launch *launch;
-    int receipt, bootstrap, completion_writer;
+    int receipt, bootstrap, completion_writer, scope_lease;
     pid_t pid,parent,tid;
     uintptr_t alt_low;
     uint64_t syscalls;
@@ -100,6 +104,7 @@ static RAW_FN void receipt(int result) {
 static RAW_FN _Noreturn void fail(long error) {receipt(error<0 ? (int)error : -EIO);die(125);}
 struct directory_entry {uint64_t inode;int64_t offset;uint16_t size;unsigned char type;char name[];};
 static RAW_FN int keep(int fd,int scan) {
+    if(fd==active.launch->snapshot.scope_bus) return 1;
     if(fd==scan || fd==active.receipt || fd==active.completion_writer || fd==active.launch->broker || fd==1 || fd==2) return 1;
     for(unsigned int i=0;i<active.launch->fd_limit;i++) if(active.launch->aliases[i]==fd) return 1;
     return 0;
@@ -423,15 +428,23 @@ static RAW_FN int file_handle(uint64_t fd) {return fd<active.launch->fd_limit ? 
 /* Raw fork continuations (including ash NOEXEC applets) use the same
  * project broker as the primary runner. Guest descriptor numbers never
  * identify broker resources, even when the numeric values coincide. */
+static RAW_FN int is_net_dir(uint64_t dirfd) {
+    return local_fd(dirfd)>=0 &&
+           active.proc_stat_resource[active.launch->metadata[dirfd].resource]==SUCRUNE_PROC_NET_DIR;
+}
+static RAW_FN long net_dir_path(uint64_t dirfd,char *path,long size) {
+    if(size<=0 || path[0]=='/' || !is_net_dir(dirfd)) return size;
+    return sucrune_proc_net_at(path,(size_t)size,SUCRUNE_PATH_LIMIT);
+}
 static RAW_FN long add_at_path(uint64_t dirfd,uintptr_t guest,int index,int mutating) {
     size_t offset=active.request.size;
     if(offset>sizeof(active.request.data)-SUCRUNE_PATH_LIMIT) return -ENAMETOOLONG;
     char *path=(char *)active.request.data+offset;
-    long size=guest_string(guest,path,SUCRUNE_PATH_LIMIT);
+    long size=net_dir_path(dirfd,path,guest_string(guest,path,SUCRUNE_PATH_LIMIT));
     if(size<0) return size;
     if(sucrune_proc_path(path)) {
         if(mutating) return -EROFS;
-        if(!sucrune_proc_self_stat(path,active.pid)) return -ENOENT;
+        if(!sucrune_proc_self_stat(path,active.pid) && !sucrune_proc_system_file(path) && !sucrune_proc_is_net_dir(path)) return -ENOENT;
     }
     int handle=AT_FDCWD;
     if(path[0]!='/' && (int32_t)dirfd!=AT_FDCWD) {
@@ -876,24 +889,55 @@ static RAW_FN char *decimal(char text[16],int number) {
 /* A pre-exec thread cannot allocate via libc or take the inherited process
  * group lock. Publish only a sealed, read-only snapshot of its own filtered
  * /proc record. A new open takes a fresh snapshot and has its own offset. */
-static RAW_FN long open_self_stat(int slot,uint64_t flags) {
+static RAW_FN long open_proc_snapshot(int slot,uint64_t flags,int file) {
     if((flags&(O_ACCMODE|O_CREAT|O_TRUNC|O_EXCL))!=0U) return -EROFS;
-    if(flags&O_DIRECTORY) return -ENOTDIR;
-    if(flags&~(uint64_t)(O_NONBLOCK|O_CLOEXEC|O_NOFOLLOW|O_LARGEFILE)) return -EINVAL;
+    if((flags&O_DIRECTORY) && file!=SUCRUNE_PROC_NET_DIR) return -ENOTDIR;
+    if(flags&~(uint64_t)(O_NONBLOCK|O_CLOEXEC|O_NOFOLLOW|O_LARGEFILE|O_DIRECTORY)) return -EINVAL;
+    if (file >= SUCRUNE_SYS_TCP && file <= SUCRUNE_SYS_UDP6) {
+        begin_request(SUCRUNE_BROKER_PROC_NET_OPEN);
+        active.request.args[0]=file;
+        active.request.args[1]=(int64_t)(flags&O_CLOEXEC);
+        active.request.args[2]=active.launch->snapshot.owner.guest_uid;
+        long handle=transact();
+        if (handle<0) return handle;
+        if (active.reply.size || handle<SUCRUNE_BROKER_HANDLE_BASE ||
+            handle>=SUCRUNE_BROKER_HANDLE_BASE+SUCRUNE_FILE_RESOURCES) return -EPROTO;
+        record_new(slot,SUCRUNE_FD_BROKER,(int)(flags&O_NONBLOCK),0,-1);
+        active.launch->handles[slot]=(int)handle;
+        active.launch->fd_flags[slot]=(flags&O_CLOEXEC)!=0U;
+        return slot;
+    }
     char input[4096];
     unsigned char output[4096];
-    long source=raw(SYS_openat,AT_FDCWD,(long)"/proc/self/stat",O_RDONLY|O_CLOEXEC|O_NOFOLLOW,0,0,0);
-    if(source<0) return source;
-    size_t used=0;
-    long count;
-    do {
-        count=R3(SYS_read,source,input+used,sizeof(input)-used);
-        if(count>0) used+=(size_t)count;
-    } while((count>0 || count==-EINTR) && used<sizeof(input));
-    (void)R1(SYS_close,source);
-    if(count<0) return count;
-    int size=sucrune_proc_filter_stat(input,used,output);
-    if(size<0) return size;
+    int size;
+    if(file==SUCRUNE_PROC_NET_DIR) {
+        size_t length;
+        const void *records=sucrune_proc_net_dirents(&length);
+        if(length>sizeof(output)) return -EOVERFLOW;
+        bytes_copy(output,records,length);
+        size=(int)length;
+    } else if(file) {
+        begin_request(SUCRUNE_BROKER_PROC_CONTENTS);
+        active.request.args[0]=file;
+        long rc=transact();
+        if(rc<0) return rc;
+        if(rc || active.reply.size>sizeof(output)) return -EPROTO;
+        size=(int)active.reply.size;
+        bytes_copy(output,active.reply.data,(size_t)size);
+    } else {
+        long source=raw(SYS_openat,AT_FDCWD,(long)"/proc/self/stat",O_RDONLY|O_CLOEXEC|O_NOFOLLOW,0,0,0);
+        if(source<0) return source;
+        size_t used=0;
+        long count;
+        do {
+            count=R3(SYS_read,source,input+used,sizeof(input)-used);
+            if(count>0) used+=(size_t)count;
+        } while((count>0 || count==-EINTR) && used<sizeof(input));
+        (void)R1(SYS_close,source);
+        if(count<0) return count;
+        size=sucrune_proc_filter_stat(input,used,output);
+        if(size<0) return size;
+    }
     long store=R2(SYS_memfd_create,"sucrune-proc-stat",MFD_CLOEXEC|MFD_ALLOW_SEALING);
     if(store<0) return store;
     long rc=R3(SYS_write,store,output,size);
@@ -908,7 +952,7 @@ static RAW_FN long open_self_stat(int slot,uint64_t flags) {
     (void)R1(SYS_close,store);
     if(rc<0) return rc;
     record_new(slot,SUCRUNE_FD_LOCAL,(int)(flags&O_NONBLOCK),0,-1);
-    active.proc_stat_resource[active.launch->metadata[slot].resource]=1;
+    active.proc_stat_resource[active.launch->metadata[slot].resource]=file ? (unsigned char)file : 1;
     active.launch->aliases[slot]=(int)rc;
     active.launch->fd_flags[slot]=(flags&O_CLOEXEC)!=0U;
     return slot;
@@ -969,6 +1013,7 @@ static RAW_FN long replace_image(void) {
     struct sucrune_guest_exec *image=&active.image;
     struct sucrune_linux_plan program,interpreter;
     image->magic=SUCRUNE_GUEST_EXEC_MAGIC;image->version=SUCRUNE_GUEST_EXEC_VERSION;image->broker=active.launch->broker;
+    image->scope=(struct sucrune_scope){active.launch->snapshot.scope_bus,active.scope_lease};
     image->image_fd=-1;image->interp_fd=-1;image->ignored_signals=0;
     image->signal_mask=active.launch->snapshot.signal_mask;image->linux_jit=active.launch->snapshot.linux_jit;
     image->exec_depth=active.launch->snapshot.exec_depth+1U;
@@ -977,7 +1022,7 @@ static RAW_FN long replace_image(void) {
     for(unsigned int i=1;i<=64U;i++) if(active.launch->snapshot.signal_actions->actions[i].handler==1U)
         image->ignored_signals|=UINT64_C(1)<<(i-1U);
     int channels[2]={-1,-1};
-    int keep_fds[SUCRUNE_LINUX_FD_LIMIT+4U],changed=0,count=0;
+    int keep_fds[SUCRUNE_LINUX_FD_LIMIT+6U],changed=0,count=0;
     long result=snapshot_exec_program(image,&program);
     if(result<0) goto done;
     if(program.interpreter[0]) {
@@ -997,6 +1042,7 @@ static RAW_FN long replace_image(void) {
     (void)R1(SYS_close,channels[0]);channels[0]=-1;
     keep_fds[count++]=channels[1];keep_fds[count++]=image->broker;keep_fds[count++]=image->image_fd;
     if(image->interp_fd>=0) keep_fds[count++]=image->interp_fd;
+    if(image->scope.bus>=0) {keep_fds[count++]=image->scope.bus;keep_fds[count++]=image->scope.lease;}
     for(unsigned int i=0;i<active.launch->fd_limit;i++) if(image->entries[i].local_alias>=0)
         keep_fds[count++]=image->entries[i].local_alias;
     for(;changed<count;changed++) {
@@ -1142,8 +1188,8 @@ static RAW_FN long child_ll_call(int op, const uint64_t *a) {
     active.launch->fd_flags[slot] = SUCRUNE_FD_CLOEXEC;
     return slot;
 }
-static RAW_FN int child_ll_special_open(int id, uint64_t flags) {
-    uint64_t access = sucrune_ll_special_access(flags, 0);
+static RAW_FN int child_ll_special_open(int id, uint64_t flags, int directory) {
+    uint64_t access = sucrune_ll_special_access(flags, directory);
     if (!access) return 0;
     begin_request(SUCRUNE_BROKER_LL_SPECIAL);
     active.request.args[0] = id;
@@ -1153,6 +1199,7 @@ static RAW_FN int child_ll_special_open(int id, uint64_t flags) {
 static RAW_FN long dispatch(int op,const uint64_t *a) {
     int fd=local_fd(a[0]),handle=file_handle(a[0]);
     int udp=fd>=0 && active.launch->udp_resource[active.launch->metadata[a[0]].resource];
+    if(is_net_dir(a[0]) && (op==63 || op==65 || op==67 || op==69)) return -EISDIR;
     /* Raw read/write would skip datagram peer validation. Only the full
      * runner implements that path. Do not turn its kernel OFD blocking. */
     if (udp && (op==63 || op==64 || op==65 || op==66)) return -EOPNOTSUPP;
@@ -1270,6 +1317,34 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
         }
         return transact();
     }
+    case 43: case 44: {
+        if(!allowed((uintptr_t)a[1],sizeof(struct statfs),1)) return -EFAULT;
+        begin_request((unsigned int)op);
+        if(op==43) {
+            long size=guest_string((uintptr_t)a[0],(char *)active.request.data,SUCRUNE_PATH_LIMIT);
+            if(size<0) return size;
+            const char *path=(const char *)active.request.data;
+            const char *device=sucrune_device_path(active.request.data);
+            if(sucrune_proc_path(path)) {
+                if(!sucrune_proc_system_file(path) && !sucrune_proc_self_stat(path,active.pid) &&
+                   !sucrune_proc_is_net_dir(path) && !sucrune_device_name(active.request.data,"/proc")) return -ENOENT;
+                device="/proc";
+            }
+            if(device) return R2(SYS_statfs,device,a[1]);
+            active.request.args[0]=AT_FDCWD; active.request.size=(uint32_t)size;
+        } else {
+            if(handle<0) {
+                if(fd<0) return -EBADF;
+                if(active.proc_stat_resource[active.launch->metadata[a[0]].resource]) return R2(SYS_statfs,"/proc",a[1]);
+                return R2(SYS_fstatfs,fd,a[1]);
+            }
+            active.request.args[0]=handle;
+        }
+        long rc=transact();
+        if(rc<0) return rc;
+        if(rc || active.reply.size!=sizeof(struct statfs)) return -EPROTO;
+        bytes_copy((void *)(uintptr_t)a[1],active.reply.data,sizeof(struct statfs)); return 0;
+    }
     case 46:case 47:case 52:case 82:case 83:
         if(handle<0) return fd<0 ? -EBADF : -EINVAL;
         begin_request((unsigned int)op);
@@ -1291,6 +1366,8 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
         }
         long rc=add_at_path(a[0],(uintptr_t)a[1],0,0);
         if(rc<0) return rc;
+        int system_file=sucrune_proc_system_file((const char *)active.request.data);
+        int net_dir=sucrune_proc_is_net_dir((const char *)active.request.data);
         int proc_stat=sucrune_proc_self_stat((const char *)active.request.data,active.pid);
         if(op==48 || op==439) {
             if((a[2]&~UINT64_C(7))!=0U || (flags&~(uint64_t)(AT_EACCESS|AT_SYMLINK_NOFOLLOW|AT_EMPTY_PATH))!=0U)
@@ -1300,7 +1377,8 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
                 if (sucrune_device_readonly(device) && (a[2] & W_OK)) return -EACCES;
                 return raw(SYS_faccessat,AT_FDCWD,(long)device,(long)a[2],0,0,0);
             }
-            if(proc_stat) return (a[2]&(W_OK|X_OK))!=0U ? -EACCES : 0;
+            if(net_dir) return (a[2]&W_OK) ? -EACCES : 0;
+            if(proc_stat || system_file) return (a[2]&(W_OK|X_OK))!=0U ? -EACCES : 0;
             active.request.args[1]=(int64_t)a[2];
             active.request.args[2]=(int64_t)flags;
             return transact();
@@ -1309,9 +1387,14 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
             (a[3]>SUCRUNE_IO_LIMIT ? SUCRUNE_IO_LIMIT : (size_t)a[3]);
         if(count==0U) return -EINVAL;
         if(!allowed((uintptr_t)a[2],count,1)) return -EFAULT;
-        if(proc_stat) {
+        if(proc_stat || system_file || net_dir) {
             if(op==78) return -EINVAL;
             if((flags&~(uint64_t)(AT_SYMLINK_NOFOLLOW|AT_NO_AUTOMOUNT))!=0U) return -EINVAL;
+            if(system_file || net_dir) {
+                if(net_dir) system_file=SUCRUNE_PROC_NET_DIR;
+                struct sucrune_arm64_stat st;
+                sucrune_proc_system_stat(system_file,&st); bytes_copy((void *)(uintptr_t)a[2],&st,sizeof(st)); return 0;
+            }
             return raw(SYS_newfstatat,AT_FDCWD,(long)"/proc/self/stat",(long)a[2],(long)flags,0,0);
         }
         const char *device = sucrune_device_path(active.request.data);
@@ -1328,16 +1411,23 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
         bytes_copy((void *)(uintptr_t)a[2],active.reply.data,active.reply.size);
         return result;
     }
+    case 50:
+        if (handle < 0) return fd < 0 ? -EBADF : -ENOTDIR;
+        begin_request(50);active.request.args[0]=handle;return transact();
     case 49:case 56: {
         int target=op==56 ? free_slot(0) : 0;if(target<0) return target;
         begin_request((unsigned int)op);
         long size=guest_string((uintptr_t)a[op==56 ? 1 : 0],(char *)active.request.data,SUCRUNE_PATH_LIMIT);
+        if(op==56) size=net_dir_path(a[0],(char *)active.request.data,size);
         if(size<0) return size;active.request.size=(uint32_t)size;
         if(sucrune_proc_path((const char *)active.request.data)) {
-            if(op==56 && sucrune_proc_self_stat((const char *)active.request.data,active.pid)) {
-                int rc = child_ll_special_open(SUCRUNE_LL_OTHER_SPECIAL, a[2]);
+            int system_file=sucrune_proc_system_file((const char *)active.request.data);
+            int dir=sucrune_proc_is_net_dir((const char *)active.request.data);
+            if(dir) system_file=SUCRUNE_PROC_NET_DIR;
+            if(op==56 && (system_file || sucrune_proc_self_stat((const char *)active.request.data,active.pid))) {
+                int rc = child_ll_special_open(SUCRUNE_LL_OTHER_SPECIAL, a[2], dir);
                 if (rc < 0) return rc;
-                return open_self_stat(target,a[2]);
+                return open_proc_snapshot(target,a[2],system_file);
             }
             return -ENOENT;
         }
@@ -1346,7 +1436,7 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
             if (device != NULL) {
                 int id = sucrune_device_name((const unsigned char *)device, "/dev/null") ?
                     SUCRUNE_LL_NULL : SUCRUNE_LL_OTHER_SPECIAL;
-                int access = child_ll_special_open(id, a[2]);
+                int access = child_ll_special_open(id, a[2], 0);
                 if (access < 0) return access;
                 int native_flags = sucrune_device_open_flags(device, a[2]);
                 if (native_flags < 0) return native_flags;
@@ -1358,7 +1448,7 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
                 return target;
             }
             if(sucrune_pty_path((const char *)active.request.data)) {
-                int access = child_ll_special_open(SUCRUNE_LL_OTHER_SPECIAL, a[2]);
+                int access = child_ll_special_open(SUCRUNE_LL_OTHER_SPECIAL, a[2], 0);
                 if (access < 0) return access;
                 return open_tty_path((const char *)active.request.data,a[2]);
             }
@@ -1436,11 +1526,18 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
         return result;
     }
     case 62:
+        if(is_net_dir(a[0]) && (a[1]!=0 || a[2]!=SEEK_SET)) return -EINVAL;
         if(handle<0) return fd<0 ? -EBADF : R3(SYS_lseek,fd,a[1],a[2]);
         begin_request((unsigned int)op);active.request.args[0]=handle;active.request.args[1]=(int64_t)a[1];active.request.args[2]=(int64_t)a[2];return transact();
     case 61: {
-        if(handle<0) return fd<0 ? -EBADF : -ENOTDIR;
         size_t count=a[2]>SUCRUNE_IO_LIMIT ? SUCRUNE_IO_LIMIT : (size_t)a[2];
+        if(is_net_dir(a[0])) {
+            count-=count%SUCRUNE_PROC_NET_RECLEN;
+            if(!count) return -EINVAL;
+            if(!allowed((uintptr_t)a[1],count,1)) return -EFAULT;
+            return R3(SYS_read,fd,a[1],count);
+        }
+        if(handle<0) return fd<0 ? -EBADF : -ENOTDIR;
         if(count!=0 && !allowed((uintptr_t)a[1],count,1)) return -EFAULT;
         begin_request(61);active.request.args[0]=handle;active.request.args[1]=(int64_t)count;
         long result=transact();
@@ -1466,8 +1563,12 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
     case 73: return child_ppoll(a);
     case 80: {
         if(!allowed((uintptr_t)a[1],sizeof(struct sucrune_arm64_stat),1)) return -EFAULT;
-        if(fd>=0 && active.proc_stat_resource[active.launch->metadata[a[0]].resource])
-            return raw(SYS_newfstatat,AT_FDCWD,(long)"/proc/self/stat",(long)a[1],0,0,0);
+        if(fd>=0 && active.proc_stat_resource[active.launch->metadata[a[0]].resource]) {
+            int file=active.proc_stat_resource[active.launch->metadata[a[0]].resource];
+            if(file==1) return raw(SYS_newfstatat,AT_FDCWD,(long)"/proc/self/stat",(long)a[1],0,0,0);
+            struct sucrune_arm64_stat st;
+            sucrune_proc_system_stat(file,&st); bytes_copy((void *)(uintptr_t)a[1],&st,sizeof(st)); return 0;
+        }
         if(handle<0) return fd<0 ? -EBADF : R2(SYS_fstat,fd,a[1]);
         begin_request(80);active.request.args[0]=handle;
         long result=transact();
@@ -1488,12 +1589,34 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
         return active.exec_result;
     }
     case 101:case 115:return child_sleep(op,a);
+    case 153:
+        if (a[0] && !allowed((uintptr_t)a[0], sizeof(struct tms), 1)) return -EFAULT;
+        return R1(SYS_times, a[0]);
+    case 165:
+        if (!allowed((uintptr_t)a[1], sizeof(struct rusage), 1)) return -EFAULT;
+        return R2(SYS_getrusage, (int)a[0], a[1]);
+    case 169:
+        if ((a[0] && !allowed((uintptr_t)a[0], sizeof(struct timeval), 1)) ||
+            (a[1] && !allowed((uintptr_t)a[1], sizeof(struct timezone), 1))) return -EFAULT;
+        return R2(SYS_gettimeofday, a[0], a[1]);
     case 113:case 114:
         if(a[0]!=CLOCK_REALTIME && a[0]!=CLOCK_MONOTONIC && a[0]!=CLOCK_PROCESS_CPUTIME_ID &&
            a[0]!=CLOCK_THREAD_CPUTIME_ID && a[0]!=CLOCK_MONOTONIC_RAW && a[0]!=CLOCK_REALTIME_COARSE &&
            a[0]!=CLOCK_MONOTONIC_COARSE && a[0]!=CLOCK_BOOTTIME) return -EINVAL;
         if((a[1]!=0 || op==113) && !allowed((uintptr_t)a[1],sizeof(struct timespec),1)) return -EFAULT;
         return R2(op,a[0],a[1]);
+    case 179:
+        if(!allowed((uintptr_t)a[0],sizeof(struct sysinfo),1)) return -EFAULT;
+        return R1(SYS_sysinfo,a[0]);
+    case 123: {
+        if((int32_t)a[0]!=0 && (int32_t)a[0]!=active.tid && (int32_t)a[0]!=active.pid) return -ESRCH;
+        cpu_set_t mask;
+        size_t count=a[1]>sizeof(mask) ? sizeof(mask) : (size_t)a[1];
+        long rc=R3(SYS_sched_getaffinity,a[0],count,&mask);
+        if(rc<0) return rc;
+        if(!allowed((uintptr_t)a[2],(size_t)rc,1)) return -EFAULT;
+        bytes_copy((void *)(uintptr_t)a[2],&mask,(size_t)rc); return rc;
+    }
     case 160: {
         struct utsname name;
         if(!allowed((uintptr_t)a[0],sizeof(name),1)) return -EFAULT;
@@ -1514,9 +1637,10 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
     }
     case 129: {
         int32_t pid=(int32_t)a[0], signo=(int32_t)a[1];
-        if(pid<=0) return -EOPNOTSUPP;
-        if(pid!=active.pid) return -ESRCH;
-        if(signo!=0 && signo!=SIGSTOP) return -EOPNOTSUPP;
+        if(pid<=0 && !(active.launch->snapshot.scope_bus>=0 && pid < -1 && pid != INT32_MIN)) return -EOPNOTSUPP;
+        if(pid!=active.pid) return active.launch->snapshot.scope_bus>=0 ?
+            sucrune_scope_signal(active.launch->snapshot.scope_bus,pid,signo) : -ESRCH;
+        if(signo!=0 && (signo!=SIGSTOP || active.scope_lease>=0)) return -EOPNOTSUPP;
         return R2(SYS_kill,active.pid,signo);
     }
     case 168:
@@ -1524,7 +1648,7 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
             (a[1] && !allowed((uintptr_t)a[1], sizeof(unsigned int), 1))) return -EFAULT;
         return R3(SYS_getcpu, a[0], a[1], 0);
     case 172:case 178:return active.pid;
-    case 173:return active.parent;
+    case 173:return R0(SYS_getppid);
     case 154: {
         int32_t pid=(int32_t)a[0],group=(int32_t)a[1];
         if(group<0) return -EINVAL;
@@ -1565,7 +1689,16 @@ static RAW_FN long dispatch(int op,const uint64_t *a) {
         if(a[1]) {if(!allowed((uintptr_t)a[1],sizeof(new_action),0)) return -EFAULT;bytes_copy(&new_action,(const void *)(uintptr_t)a[1],sizeof(new_action));if(new_action.handler>1U) return -ENOTSUP;}
         struct sucrune_signal_process *actions=(struct sucrune_signal_process *)active.launch->snapshot.signal_actions;
         if(a[2]) {if(!allowed((uintptr_t)a[2],sizeof(new_action),1)) return -EFAULT;bytes_copy((void *)(uintptr_t)a[2],&actions->actions[a[0]],sizeof(new_action));}
-        if(a[1]) bytes_copy(&actions->actions[a[0]],&new_action,sizeof(new_action));return 0;
+        if(a[1]) {
+            if(active.scope_lease>=0 && (a[0]==SIGHUP || a[0]==SIGINT || a[0]==SIGTERM)) {
+                /* This raw dispatcher supports the default and ignore actions. */
+                uint64_t action[4]={new_action.handler,0,0,0};
+                long rc=raw(SYS_rt_sigaction,(long)a[0],(long)action,0,8,0,0);
+                if(rc<0) return rc;
+            }
+            bytes_copy(&actions->actions[a[0]],&new_action,sizeof(new_action));
+        }
+        return 0;
     }
     case 135: {
         if(a[3]!=8U || (a[1] && a[0]>2U)) return -EINVAL;
@@ -1674,6 +1807,7 @@ static RAW_FN long prepare_arena(const struct sucrune_fork_launch *launch,int ch
     child->supervisor_tls=base+0xb8000;child->supervisor_scs=base+0xc0000;
     child->gate_tls=base+0xd8000;child->gate_scs=base+0xe0000;
     child->alt_low=base+SUCRUNE_FORK_ALT_BASE;
+    child->scope_lease=-1;
     child->receipt=channel;child->parent=expected;child->completion_writer=done_fd;
     child->launch=&child->owned;
     bytes_copy(&child->owned,launch,sizeof(*launch));
@@ -1728,6 +1862,18 @@ RAW_FN __attribute__((visibility("hidden"))) _Noreturn void sucrune_fork_supervi
     result=R3(SYS_fcntl,0,F_GETFD,0);
     if(result==-EBADF) {result=R3(SYS_fcntl,launch->broker,F_DUPFD_CLOEXEC,0);if(result!=0) fail(result<0 ? result : -EIO);}
     else if(result<0) fail(result);
+    if(launch->snapshot.scope_bus>=0) {
+        active.scope_lease=sucrune_scope_join(launch->snapshot.scope_bus);
+        if(active.scope_lease<0) fail(active.scope_lease);
+        if(active.scope_lease<3) fail(-EBADF);
+        uintptr_t monitor_stack=(uintptr_t)child_context()+0x110000U;
+        result=sucrune_fork_raw_clone(CLONE_VM|CLONE_FS|CLONE_FILES|CLONE_SIGHAND|CLONE_THREAD|CLONE_SYSVSEM,
+            (void *)monitor_stack,sucrune_scope_monitor,(void *)(intptr_t)active.scope_lease);
+        if(result<0) fail(result);
+        /* Project ownership is established before the ordinary parent can exit. */
+        result=raw(SYS_prctl,PR_SET_PDEATHSIG,0,0,0,0,0);
+        if(result<0) fail(result);
+    }
     if(!executable(launch->snapshot.cpu.pc) || !allowed(launch->snapshot.cpu.sp-16U,16U,1)) fail(-EFAULT);
     struct kernel_action action={sucrune_fork_signal_entry,SA_SIGINFO|SA_ONSTACK|0x04000000U,sucrune_fork_restorer,UINT64_MAX};
     for(int i=0;i<2;i++) {

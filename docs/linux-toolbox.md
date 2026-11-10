@@ -82,4 +82,8 @@ Android 15 已跑通 Bash、ash 命令替换内的多级管道，以及 BusyBox 
 
 带 `#!` 的可执行脚本可作为启动入口，解释器和 `/usr/bin/env` 搜索的命令均来自项目。参见[Alpine rootfs 导入与验收](linux-rootfs-import.md)。
 
-TCP 客户端可直接使用阻塞 `connect`，或通过 `fcntl`、`FIONBIO` 切换非阻塞连接。两种模式均由 broker 校验目的地址。阻塞连接及常用读写在 worker 等待就绪，已连接流支持无目标地址和辅助数据的 `sendmsg`、`recvmsg`。监听和跨 `fork` 继承 TCP 仍要求非阻塞模式。Linux 主线程的 ELF 原地替换限于没有其他未汇合的 guest 线程。固定地址保留区可以在空闲地址范围扩展；单次执行链限 32 次替换。
+TCP 客户端可直接使用阻塞 `connect`，或通过 `fcntl`、`FIONBIO` 切换非阻塞连接。两种模式均由 broker 校验目的地址。阻塞连接及常用读写在 worker 等待就绪，已连接流支持无目标地址和辅助数据的 `sendmsg`、`recvmsg`。显式绑定获准的回环地址后可以 `listen`。阻塞 `accept` 在 worker 释放状态锁后等待连接，非阻塞监听器在队列为空时返回 `EAGAIN`。跨 `fork` 继承 TCP 仍要求非阻塞模式。Linux 主线程的 ELF 原地替换限于没有其他未汇合的 guest 线程。固定地址保留区可以在空闲地址范围扩展；单次执行链限 32 次替换。
+
+普通项目的 `statfs` 和 `fstatfs` 返回承载项目文件的存储卷容量，`/proc/mounts`、`/proc/self/mounts` 和 `/etc/mtab` 列出客体挂载点。直连手机文件夹的 SAF 提供方尚未提供容量查询，该挂载点返回 `EOPNOTSUPP`。
+
+`/proc/meminfo`、`/proc/uptime` 和 `sysinfo` 反映设备级内存及启动时间。受系统限制读取内存文件时，运行时用内核 `sysinfo` 提供可获得的计数。`sched_getaffinity` 返回当前线程或本进程主线程获准使用的 CPU 集合。

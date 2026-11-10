@@ -38,6 +38,7 @@ struct sucrune_process_group {
     struct sucrune_fork_launch launch;
     pid_t children[SUCRUNE_PROCESS_LIMIT];
     struct child_watch watches[SUCRUNE_PROCESS_LIMIT];
+    struct sucrune_scope scope;
     int wake_fd;
     atomic_int notice_pending;
     struct sucrune_signal_info notice;
@@ -221,11 +222,12 @@ static void *supervise(void *opaque) {
     (void)pthread_mutex_unlock(&group->mutex);
     return NULL;
 }
-int sucrune_processes_create(struct sucrune_process_group **out) {
+int sucrune_processes_create(struct sucrune_process_group **out, struct sucrune_scope scope) {
     if(out==NULL) return -EINVAL;
     *out=NULL;
     struct sucrune_process_group *group=calloc(1U,sizeof(*group));
     if(group==NULL) return -ENOMEM;
+    group->scope=scope;
     atomic_init(&group->notice_pending,0);
     int error=pthread_mutex_init(&group->mutex,NULL);
     if(error!=0) {free(group);return -error;}
@@ -289,6 +291,7 @@ int64_t sucrune_processes_fork(struct sucrune_process_group *group,const struct 
     int64_t result=-EAGAIN;
     if(group->stats.live==SUCRUNE_PROCESS_LIMIT || group->stopping) goto done;
     group->launch.snapshot=*snapshot;
+    group->launch.snapshot.scope_bus=group->scope.bus;
     group->launch.parent_group=getpgid(0);
     group->launch.parent_session=getsid(0);
     if(group->launch.parent_group<0 || group->launch.parent_session<0) {result=-ESRCH;goto done;}
@@ -450,6 +453,12 @@ int64_t sucrune_processes_wait(struct sucrune_process_group *group,int64_t pid,u
 }
 int sucrune_processes_proc_pids(struct sucrune_process_group *group,int32_t *pids,size_t capacity) {
     if(pids==NULL || capacity<SUCRUNE_PROCESS_LIMIT+1U) return -EINVAL;
+    if(group && group->scope.bus>=0) {
+        int root=group->scope.lease<0;
+        if(root) pids[0]=(int32_t)getpid();
+        int n=sucrune_scope_pids(group->scope.bus,pids+root,capacity-(size_t)root);
+        return n<0 ? n : n+root;
+    }
     int count=1; pids[0]=(int32_t)getpid();
     if(group!=NULL) {
         (void)pthread_mutex_lock(&group->mutex);
@@ -460,9 +469,10 @@ int sucrune_processes_proc_pids(struct sucrune_process_group *group,int32_t *pid
     return count;
 }
 int sucrune_processes_signal_child(struct sucrune_process_group *group,int32_t pid,int32_t signo) {
-    if(pid<=0) return -EOPNOTSUPP;
+    if(pid<=0 && !(group && group->scope.bus>=0 && pid < -1 && pid != INT32_MIN)) return -EOPNOTSUPP;
     if(signo<0 || signo>64) return -EINVAL;
     if(group==NULL) return -ESRCH;
+    if(group->scope.bus>=0) return sucrune_scope_signal(group->scope.bus,pid,signo);
     int result=-ESRCH;
     (void)pthread_mutex_lock(&group->mutex);
     for(unsigned int i=0;i<SUCRUNE_PROCESS_LIMIT;i++) {
@@ -478,6 +488,10 @@ int sucrune_processes_signal_child(struct sucrune_process_group *group,int32_t p
 }
 int sucrune_processes_open_proc(struct sucrune_process_group *group,int32_t pid,int stat_file) {
     if(pid<=0 || stat_file<0 || stat_file>2) return -ENOENT;
+    if(group && group->scope.bus>=0 && pid!=(int32_t)getpid()) {
+        int fd=sucrune_scope_proc(group->scope.bus,pid,stat_file);
+        return fd==-ESRCH ? -ENOENT : fd;
+    }
     if(group!=NULL) (void)pthread_mutex_lock(&group->mutex);
     int authorized=pid==(int32_t)getpid(), result=-ENOENT;
     if(!authorized && group!=NULL) for(unsigned int i=0;i<SUCRUNE_PROCESS_LIMIT;i++)
@@ -579,7 +593,7 @@ int64_t sucrune_processes_query_group(struct sucrune_process_group *g,int64_t p,
 int sucrune_processes_proc_pids(struct sucrune_process_group *g,int32_t *p,size_t c) {(void)g;(void)p;(void)c;return -ENOTSUP;}
 int sucrune_processes_open_proc(struct sucrune_process_group *g,int32_t p,int s) {(void)g;(void)p;(void)s;return -ENOTSUP;}
 int sucrune_processes_signal_child(struct sucrune_process_group *g,int32_t p,int32_t s) {(void)g;(void)p;(void)s;return -ENOTSUP;}
-int sucrune_processes_create(struct sucrune_process_group **out) {if(out) *out=NULL;return -ENOTSUP;}
+int sucrune_processes_create(struct sucrune_process_group **out, struct sucrune_scope scope) {(void)scope;if(out) *out=NULL;return -ENOTSUP;}
 int64_t sucrune_processes_fork(struct sucrune_process_group *g,const struct sucrune_process_snapshot *s,struct sucrune_vfork_lease *l) {(void)g;(void)s;(void)l;return -ENOTSUP;}
 void sucrune_processes_finish_vfork(struct sucrune_vfork_lease *l) {(void)l;}
 int64_t sucrune_processes_wait(struct sucrune_process_group *g,int64_t p,unsigned int o,int *s,struct rusage *u) {(void)g;(void)p;(void)o;(void)s;(void)u;return -ENOTSUP;}

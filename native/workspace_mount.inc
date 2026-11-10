@@ -89,7 +89,7 @@ static int walk_mount(struct broker *b,const char *start,const char *pending,boo
 }
 static int mount_open(struct broker *b,const struct sucrune_request *r,int *send_fd) {
     const bool exec=r->operation==SUCRUNE_BROKER_OPEN_EXEC;
-    const int allowed=O_PATH|O_ACCMODE|O_CREAT|O_EXCL|O_TRUNC|O_APPEND|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_LARGEFILE|O_NONBLOCK;
+    const int allowed=O_PATH|O_ACCMODE|O_CREAT|O_EXCL|O_TRUNC|O_APPEND|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC|O_LARGEFILE|O_NONBLOCK|O_NOCTTY;
     if (r->args[1]<0 || r->args[1]>INT32_MAX || (r->args[1]&~(int64_t)allowed)) return -EINVAL;
     int flags=(int)r->args[1], access=flags&O_ACCMODE;
     if (access==O_ACCMODE) return -EINVAL;
@@ -219,6 +219,7 @@ static bool mount_fd_operation(struct broker *b,const struct sucrune_request *r,
     struct file_status *s=b->status[r->args[0]];
     int fd=b->files[r->args[0]];
     switch(r->operation) {
+    case 44: out->result=-EOPNOTSUPP; return true; /* A SAF cache FD is not the document volume. */
     case 80: {
         struct stat st=m->attributes;
         if (!m->path_only && S_ISREG(st.st_mode)) {
@@ -320,17 +321,18 @@ static int mount_path_operation(struct broker *b,const struct sucrune_request *r
         return rc<0 ? rc : b->family->mount.remove(b->family->mount.context,b->mount_path,r->args[1]!=0);
     case 36: case 53: case SUCRUNE_BROKER_UTIMENSAT: return -EOPNOTSUPP;
     case SUCRUNE_BROKER_LINKAT: return -EXDEV;
-    case 79: case 49: case SUCRUNE_BROKER_FACCESSAT: case SUCRUNE_BROKER_FACCESSAT2: case SUCRUNE_BROKER_READLINKAT: {
+    case 43: case 79: case 49: case 50: case SUCRUNE_BROKER_FACCESSAT: case SUCRUNE_BROKER_FACCESSAT2: case SUCRUNE_BROKER_READLINKAT: {
         struct stat st;
         rc=mount_stat(b,b->mount_path,&st);
         if (rc<0) return rc;
         if (b->mount_requires_dir && !S_ISDIR(st.st_mode)) return -ENOTDIR;
+        if (r->operation==43) return -EOPNOTSUPP;
         if (r->operation==SUCRUNE_BROKER_READLINKAT) return -EINVAL;
         if (r->operation==79) {
             if (r->args[1] && r->args[1]!=AT_SYMLINK_NOFOLLOW) return -EINVAL;
             stat_reply(out,&st); return 0;
         }
-        if (r->operation==49) {
+        if (r->operation==49 || r->operation==50) {
             if (!S_ISDIR(st.st_mode)) return -ENOTDIR;
             int pin=pin_directory(b,b->mount_path);
             if (pin<0) return pin;

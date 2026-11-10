@@ -118,6 +118,15 @@ enum sucrune_write_scope { SUCRUNE_WRITE_UNRESTRICTED, SUCRUNE_WRITE_READ_ONLY, 
 /* Loader-only O_RDONLY snapshot. args[3]=1 requests an optional direct read
  * right; args[3]=0 leaves all reads in the broker. Requires READ_FILE and EXECUTE. */
 #define SUCRUNE_BROKER_OPEN_EXEC 0x53550006U
+/* Read-only guest proc snapshots. Neither paths nor arbitrary host PIDs are accepted. */
+#define SUCRUNE_BROKER_PROC_CONTENTS 0x53550007U
+/* A project socket-table snapshot. args={file,flags&O_CLOEXEC,guest_euid,0}, no payload.
+ * Returns a read-only broker handle with ordinary open-file-description semantics. */
+#define SUCRUNE_BROKER_PROC_NET_OPEN 0x53550008U
+enum sucrune_system_file {
+    SUCRUNE_SYS_MOUNTS=2, SUCRUNE_SYS_MEMINFO, SUCRUNE_SYS_UPTIME,
+    SUCRUNE_SYS_TCP, SUCRUNE_SYS_TCP6, SUCRUNE_SYS_UDP, SUCRUNE_SYS_UDP6
+};
 struct sucrune_request {
     uint32_t magic, operation;
     int64_t args[4];

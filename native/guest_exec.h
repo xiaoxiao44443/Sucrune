@@ -3,9 +3,10 @@
 #include <stddef.h>
 #include <stdint.h>
 #include "guest_fds.h"
+#include "project_scope.h"
 
-#define SUCRUNE_GUEST_EXEC_MODE "--sucrune-guest-exec-v5"
-#define SUCRUNE_GUEST_EXEC_VERSION 5U
+#define SUCRUNE_GUEST_EXEC_MODE "--sucrune-guest-exec-v6"
+#define SUCRUNE_GUEST_EXEC_VERSION 6U
 #define SUCRUNE_GUEST_EXEC_MAGIC UINT32_C(0x58454753)
 #define SUCRUNE_GUEST_EXEC_TEXT (64U * 1024U)
 /* Internal execve may start a compiler with hundreds of source paths.
@@ -30,6 +31,7 @@ struct sucrune_guest_exec {
     uint32_t magic, version, argc, envc, text_size;
     int32_t broker, image_fd, interp_fd;
     uint32_t linux_jit, build_profile, exec_depth, script, fd_limit; /* script argv[0] names the final guest ELF */
+    struct sucrune_scope scope;
     uint64_t signal_mask, ignored_signals;
     /* Indexed by guest FD. Absent={-1,0,-1,-1}. Live entries have flags 0
      * after exec. A shared resource index denotes one open description.

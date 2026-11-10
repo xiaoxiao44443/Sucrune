@@ -40,7 +40,9 @@ argv/env 各最多 64 项，每项最多 4,096 UTF-8 字节，两者合计含每
 
 完整 Linux runner 对项目普通文件的单次 `write` / `pwrite64` 默认最多提交 1 MiB，构建配置最多 16 MiB。代理收齐请求后使用一次内核写入，返回实际字节数。超过对应上限时调用方需处理短写。两个项目内普通文件之间可用 `sendfile`，支持显式源偏移和共享文件偏移。
 
-Linux 网络默认关闭。构建工具若只需回环网络，调用方可传 `SUCRUNE_NETWORK_POLICY=loopback`。只有同时选择 `build` 和 `loopback`，代理才把 UDP 对 `0.0.0.0:0` 或 `[::]:0` 的绑定转换为设备上相应回环地址的临时端口。`outbound` 是独立的显式网络策略。JIT 内存权限由 `SUCRUNE_MEMORY_POLICY` 单独选择。
+Linux 网络默认关闭。构建工具若只需回环网络，调用方可传 `SUCRUNE_NETWORK_POLICY=loopback`。只有同时选择 `build` 和 `loopback`，代理才把 UDP 对 `0.0.0.0:0` 或 `[::]:0` 的绑定转换为设备上相应回环地址的临时端口。`outbound` 是独立的显式网络策略。默认绑定启动时的 Android 活动网络。常驻服务可同时指定 `SUCRUNE_NETWORK_ROUTE=system`，允许在离线时启动，新建连接和 DNS 查询使用应用当前的默认网络。切换网络后，已断开的连接需要由客体重新建立。JIT 内存权限由 `SUCRUNE_MEMORY_POLICY` 单独选择。
+
+Linux 客体打开 `/proc/net/tcp`、`tcp6`、`udp`、`udp6` 时会取得当前工作区的只读套接字快照。同一管理进程内，指向同一工作区根的多个执行会话共享这份视图。继承和复制的套接字按 inode 合并，最后一个引用释放后，新快照会移除该条目。表中包括仍有文件描述符的 TCP 连接、监听端口和已分配本地端口的 UDP 套接字。已脱离客体描述符的 `TIME_WAIT`、宿主服务和其他项目处于统计范围之外。各工作区共享设备的端口空间。
 
 在上述构建配置中，父进程持有已绑定、未连接的回环 UDP socket 时可以启动工具子进程。子进程在 `exec` 前可复制或关闭这个 FD，父进程仍可收发。子进程直接通过继承的 UDP FD 收发，或将它作为非 `CLOEXEC` 描述符带入新 ELF，均返回 `EOPNOTSUPP`。
 

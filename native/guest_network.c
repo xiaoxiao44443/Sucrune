@@ -3,6 +3,7 @@
 #include "guest_sockets.h"
 #include <errno.h>
 #include <fcntl.h>
+#include <netinet/in.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -59,9 +60,9 @@ static int exchange(struct sucrune_guest_network *network, struct sucrune_reques
     }
     return 0;
 }
-static int admit(struct sucrune_guest_network *network, int fd, int type, int64_t token) {
+static int admit(struct sucrune_guest_network *network, int fd, int type, int64_t token, int echo_domain) {
     for (size_t i = 0; i < SUCRUNE_NET_RESOURCE_LIMIT; i++) if (network->entries[i].fd < 0) {
-        network->entries[i] = (struct sucrune_guest_network_entry){.fd = fd, .type = type, .token = token};
+        network->entries[i] = (struct sucrune_guest_network_entry){.fd = fd, .type = type, .token = token, .echo_domain = echo_domain};
         network->count++;
         if (network->count > network->peak) network->peak = network->count;
         return fd;
@@ -117,15 +118,96 @@ int sucrune_guest_network_commit_exec(struct sucrune_guest_network *network) {
 }
 int sucrune_guest_network_socket(struct sucrune_guest_network *network, int domain, int type, int protocol) {
     if (network->count >= SUCRUNE_NET_RESOURCE_LIMIT) return -EMFILE;
-    struct sucrune_request request = {.operation = SUCRUNE_NET_SOCKET, .args = {domain, type, protocol, 0}};
+    int base_type = type & ~(SOCK_NONBLOCK | SOCK_CLOEXEC);
+    int echo = base_type == SOCK_DGRAM && ((domain == AF_INET && protocol == IPPROTO_ICMP) ||
+        (domain == AF_INET6 && protocol == IPPROTO_ICMPV6));
+    struct sucrune_request request = {.operation = echo ? SUCRUNE_NET_ECHO_SOCKET : SUCRUNE_NET_SOCKET,
+        .args = {domain, type, protocol, 0}};
     struct sucrune_response response;
     int received = -1;
     int error = exchange(network, &request, &response, &received);
     if (error != 0) return error;
     if (received < 0 || !sucrune_net_token_valid(response.result) ||
         response.size != SUCRUNE_NET_REPLY_HEADER) return invalid_reply(network, received);
-    return admit(network, received, type & ~(SOCK_NONBLOCK|SOCK_CLOEXEC), response.result);
+    return admit(network, received, base_type, response.result, echo ? domain : 0);
 }
+int sucrune_guest_network_echo_domain(const struct sucrune_guest_network *network, int fd) {
+    if (network && fd >= 0) for (size_t i = 0; i < SUCRUNE_NET_RESOURCE_LIMIT; i++)
+        if (network->entries[i].fd == fd) return network->entries[i].echo_domain;
+    return 0;
+}
+
+static ssize_t send_echo(struct sucrune_guest_network *network, struct sucrune_guest_network_entry *socket,
+                         struct msghdr *message, int flags) {
+    struct sucrune_request request = {.operation = SUCRUNE_NET_ECHO_SEND,
+        .args = {socket->token, flags, 0, 0}};
+    if (message->msg_name) {
+        size_t length = socket->echo_domain == AF_INET ? 16U : 28U;
+        struct sucrune_socket_address address;
+        if (message->msg_namelen != length) return -EINVAL;
+        if (sucrune_socket_address_decode(message->msg_name, length, &address) != 0 ||
+            address.family != socket->echo_domain) return -EAFNOSUPPORT;
+        request.size = (uint32_t)length;
+        memcpy(request.data, message->msg_name, length);
+    }
+    size_t bytes = 0;
+    size_t count = (size_t)message->msg_iovlen;
+    if (count > 1024U) return -EMSGSIZE;
+    for (size_t i = 0; i < count; i++) {
+        if (message->msg_iov[i].iov_len > SUCRUNE_NET_ECHO_PACKET_LIMIT - bytes) return -EMSGSIZE;
+        bytes += message->msg_iov[i].iov_len;
+    }
+    /* An echo datagram has an eight-byte ICMP header. Do not queue an empty
+     * seqpacket (the peer also uses EOF for transport teardown). */
+    if (bytes < 8U) return -EINVAL;
+    struct msghdr outgoing = {.msg_iov = message->msg_iov, .msg_iovlen = message->msg_iovlen};
+    ssize_t queued = sendmsg(socket->fd, &outgoing, MSG_DONTWAIT | MSG_NOSIGNAL);
+    if (queued < 0) return -errno;
+    if ((size_t)queued != bytes) return invalid_reply(network, -1);
+    struct sucrune_response response;
+    int received = -1;
+    int error = exchange(network, &request, &response, &received);
+    if (error) return error;
+    if (received >= 0 || response.result != 0 || response.size != SUCRUNE_NET_REPLY_HEADER + 4U ||
+        sucrune_net_u32(response.data + SUCRUNE_NET_REPLY_HEADER) != bytes) return invalid_reply(network, received);
+    socket->udp_state |= SUCRUNE_UDP_BOUND;
+    return queued;
+}
+
+ssize_t sucrune_guest_network_echo_message(struct sucrune_guest_network *network, int fd,
+        int receiving, struct msghdr *message, int flags) {
+    struct sucrune_guest_network_entry *socket = entry(network, fd);
+    if (!socket || !socket->echo_domain) return -ENOTSOCK;
+    if (!message) return -EINVAL;
+    if (!receiving) return send_echo(network, socket, message, flags);
+    if (message->msg_iovlen != 1 || !message->msg_name ||
+        message->msg_namelen < SUCRUNE_NET_ECHO_SOURCE_BYTES) return -EINVAL;
+
+    unsigned char source[SUCRUNE_NET_ECHO_SOURCE_BYTES];
+    struct iovec parts[] = {{.iov_base = source, .iov_len = sizeof(source)}, message->msg_iov[0]};
+    struct msghdr incoming = {.msg_iov = parts, .msg_iovlen = 2};
+    ssize_t size = recvmsg(fd, &incoming, flags | MSG_DONTWAIT);
+    if (size < 0) return -errno;
+    if (!size) return -ECONNRESET;
+    if ((size_t)size < sizeof(source)) return invalid_reply(network, -1);
+    if (source[0] == 0U && source[1] == 0U) {
+        uint32_t error = sucrune_net_u32(source + 4);
+        for (size_t i = 0; i < sizeof(source); i++)
+            if ((i < 4U || i >= 8U) && source[i]) return invalid_reply(network, -1);
+        if ((size_t)size != sizeof(source) || (incoming.msg_flags & MSG_TRUNC) ||
+            !error || error > 4095U) return invalid_reply(network, -1);
+        return -(int)error;
+    }
+    if (source[0] != socket->echo_domain || source[1] != 0U) return invalid_reply(network, -1);
+    size_t length = socket->echo_domain == AF_INET ? 16U : 28U;
+    for (size_t i = length; i < sizeof(source); i++)
+        if (source[i] != 0U) return invalid_reply(network, -1);
+    memcpy(message->msg_name, source, length);
+    message->msg_namelen = (socklen_t)length;
+    message->msg_flags = incoming.msg_flags & MSG_TRUNC;
+    return size - (ssize_t)sizeof(source);
+}
+
 int sucrune_guest_network_accept(struct sucrune_guest_network *network, int fd, int flags,
     void *address, size_t capacity, size_t *length) {
     struct sucrune_guest_network_entry *found = entry(network, fd);
@@ -142,7 +224,7 @@ int sucrune_guest_network_accept(struct sucrune_guest_network *network, int fd, 
     if (received < 0 || !sucrune_net_token_valid(response.result) ||
         sucrune_socket_address_decode(response.data + SUCRUNE_NET_REPLY_HEADER, bytes, &normalized) != 0 ||
         (normalized.family != 2U && normalized.family != 10U)) return invalid_reply(network, received);
-    int adopted = admit(network, received, SOCK_STREAM, response.result);
+    int adopted = admit(network, received, SOCK_STREAM, response.result, 0);
     if (adopted < 0) return adopted;
     size_t copied = capacity < bytes ? capacity : bytes;
     if (copied != 0U) memcpy(address, response.data + SUCRUNE_NET_REPLY_HEADER, copied);

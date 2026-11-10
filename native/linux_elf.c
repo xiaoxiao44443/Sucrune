@@ -19,7 +19,12 @@ static int metadata_mapped(const struct sucrune_elf_plan *plan, const Elf64_Phdr
         const struct sucrune_elf_segment *s = &plan->segments[i];
         if (relative < s->vaddr || relative - s->vaddr > s->memsz) continue;
         size_t delta = relative - s->vaddr;
-        if (!tls && p->p_memsz > s->memsz - delta) continue;
+        if (!tls && p->p_memsz > s->memsz - delta) {
+            /* lld can round RELRO to the end of the mapped page, beyond
+             * the last declared RW byte. No file data may use this padding. */
+            if (p->p_type != PT_GNU_RELRO || delta == s->memsz ||
+                p->p_memsz > s->page_offset + s->page_length - relative) continue;
+        }
         if (p->p_filesz != 0U && (delta > s->filesz || p->p_filesz > s->filesz - delta ||
                 p->p_offset != s->offset + delta)) continue;
         return 1;

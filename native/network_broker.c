@@ -7,9 +7,16 @@
 #include <limits.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <poll.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <sys/syscall.h>
+#include <linux/memfd.h>
 #include <unistd.h>
 #endif
 
@@ -21,7 +28,7 @@ void sucrune_net_put_u32(unsigned char *bytes, uint32_t value) {
     for (unsigned int i = 0U; i < 4U; i++) bytes[i] = (unsigned char)(value >> (i * 8U));
 }
 int sucrune_net_operation(uint32_t operation) {
-    return operation >= SUCRUNE_NET_SOCKET && operation <= SUCRUNE_NET_EXEC_KEEP;
+    return operation >= SUCRUNE_NET_SOCKET && operation <= SUCRUNE_NET_ECHO_SEND;
 }
 int sucrune_net_token_valid(int64_t token) {
     uint64_t value = (uint64_t)token;
@@ -29,6 +36,7 @@ int sucrune_net_token_valid(int64_t token) {
         ((value >> 6U) & SUCRUNE_NET_GENERATION_MAX) != 0U;
 }
 #if !defined(SUCRUNE_NETWORK_WIRE_ONLY)
+#include "network_proc.inc"
 int sucrune_network_init(struct sucrune_network_broker *network, int policy) {
     if (network == NULL) return -EINVAL;
     if (policy != SUCRUNE_NETWORK_NONE && policy != SUCRUNE_NETWORK_LOOPBACK && policy != SUCRUNE_NETWORK_OUTBOUND) return -EINVAL;
@@ -50,13 +58,29 @@ static uint64_t slot_token(const struct sucrune_network_broker *network, const s
 static void revoke_dns(struct sucrune_network_broker *network, struct sucrune_net_slot *slot) {
     if (slot->dns_registered) {network->hooks.dns_remove(network->hooks.context,slot_token(network,slot));slot->dns_registered=0;}
 }
-void sucrune_network_destroy(struct sucrune_network_broker *network) {
-    for (size_t i = 0U; i < SUCRUNE_NET_RESOURCE_LIMIT; i++) {
-        revoke_dns(network,&network->slots[i]);
-        if (network->slots[i].fd >= 0) (void)close(network->slots[i].fd);
-        network->slots[i].fd = -1;
+static int release_slot(struct sucrune_network_broker *network, struct sucrune_net_slot *slot) {
+    set_slot_visible(network, slot, 0);
+    revoke_dns(network, slot);
+    if (slot->echo_peer >= 0) {
+        (void)close(slot->echo_peer);
+        slot->echo_peer = -1;
+        if (--network->echo_count == 0U) {
+            free(network->echo_packet);
+            network->echo_packet = NULL;
+        }
     }
-    network->count = 0U;
+    int result = close(slot->fd) == 0 ? 0 : -errno;
+    slot->fd = -1;
+    network->count--;
+    return result;
+}
+void sucrune_network_destroy(struct sucrune_network_broker *network) {
+    detach_workspace(network);
+    /* A workspace can unwind before setup_network initialized the slot array. */
+    if (network->count == 0U) return;
+    for (size_t i = 0U; i < SUCRUNE_NET_RESOURCE_LIMIT; i++) {
+        if (network->slots[i].fd >= 0) (void)release_slot(network, &network->slots[i]);
+    }
 }
 static int free_slot(const struct sucrune_network_broker *network, unsigned int other) {
     if (network->count >= SUCRUNE_NET_RESOURCE_LIMIT || other >= network->total_resource_limit ||
@@ -89,7 +113,7 @@ static int forkable_socket(const struct sucrune_network_broker *network,const st
     } else {
         /* Only the build profile's bound, unconnected loopback datagram socket
          * may be carried through fork for close/dup before the next exec. */
-        if (slot->type!=SOCK_DGRAM || !network->build_profile ||
+        if (slot->protocol!=IPPROTO_UDP || !network->build_profile ||
             network->policy!=SUCRUNE_NETWORK_LOOPBACK || !slot->bound || slot->network_selected) return 0;
         if (getpeername(slot->fd,(struct sockaddr *)&actual,&length)==0 || errno!=ENOTCONN) return 0;
     }
@@ -109,6 +133,7 @@ int sucrune_network_fork_connected(struct sucrune_network_broker *child,const st
         int fd=fcntl(src->fd,F_DUPFD_CLOEXEC,3);
         if(fd<0) {error=-errno;break;}
         child->slots[i]=*src;child->slots[i].fd=fd;child->count++;
+        set_slot_visible(child, &child->slots[i], 1);
     }
     if(error!=0) {sucrune_network_destroy(child);return error;}
     child->peak=child->count;child->fork_session=1;
@@ -137,14 +162,16 @@ static int keep_after_exec(struct sucrune_network_broker *network,const struct s
     for(unsigned int i=0U;i<SUCRUNE_NET_RESOURCE_LIMIT;i++) {
         struct sucrune_net_slot *slot=&network->slots[i];
         if(slot->fd<0 || (mask&(UINT64_C(1)<<i))!=0U) continue;
-        revoke_dns(network,slot);(void)close(slot->fd);slot->fd=-1;network->count--;
+        (void)release_slot(network,slot);
     }
     return 0;
 }
-static int64_t adopt(struct sucrune_network_broker *network, int index, int fd, int domain, int type) {
+static int64_t adopt(struct sucrune_network_broker *network, int index, int fd, int domain, int type, int protocol) {
     struct sucrune_net_slot *slot = &network->slots[index];
-    slot->generation++; slot->fd=fd;slot->domain=domain;slot->type=type;slot->bound=0;
+    slot->generation++; slot->fd=fd;slot->domain=domain;slot->type=type;slot->protocol=protocol;slot->bound=0;
     slot->dns_registered=0;slot->network_selected=0;
+    slot->echo_peer=-1;
+    set_slot_visible(network, slot, 1);
     network->count++;
     if (network->count > network->peak) network->peak = network->count;
     return (int64_t)(SUCRUNE_NET_TOKEN_PREFIX | (slot->generation << 6U) | (unsigned int)index);
@@ -228,10 +255,28 @@ static int register_dns(struct sucrune_network_broker *network, struct sucrune_n
     if (error==0) slot->dns_registered=1;
     return error;
 }
+static int select_outbound(struct sucrune_network_broker *network, struct sucrune_net_slot *slot) {
+    if (!slot->network_selected && network->hooks.select_socket!=NULL) {
+        int error=network->hooks.select_socket(network->hooks.context,slot->fd);
+        if (error!=0) return error;
+        slot->network_selected=1;
+    }
+    return 0;
+}
 /* Translate only values from normalized bytes. source=1 must never return the
  * private proxy address. Connections and unconnected datagrams use one policy. */
 static int route_address(struct sucrune_network_broker *network, struct sucrune_net_slot *slot,
         struct sucrune_socket_address *address, int binding, int source) {
+    int echo = slot->protocol == IPPROTO_ICMP || slot->protocol == IPPROTO_ICMPV6;
+    if (echo) {
+        /* Linux datagram ping sockets can only exchange ICMP echo, never raw IP.
+         * sockaddr ports describe the local echo identifier, not a TCP/UDP
+         * endpoint. In particular no DNS proxy or UDP source bind applies. */
+        if (loopback(address)) return 0;
+        if (binding || network->policy != SUCRUNE_NETWORK_OUTBOUND || !outbound_unicast(address))
+            return -EACCES;
+        return source ? 0 : select_outbound(network, slot);
+    }
     if (source) {
         if (physical_dns(network,address)) {
             if (!slot->dns_registered || address->family!=AF_INET) return -EACCES;
@@ -241,11 +286,11 @@ static int route_address(struct sucrune_network_broker *network, struct sucrune_
     }
     if (physical_dns(network,address)) return -EACCES;
     if (binding) {
-        /* Build tools request an ephemeral UDP listener on the virtual
-         * loopback-only network. Never bind a wildcard on the actual device. */
+        /* Managed DNS clients and build tools request an ephemeral source.
+         * Never bind their wildcard on the actual device. */
         static const unsigned char unspecified[16] = {0};
-        if (network->policy == SUCRUNE_NETWORK_LOOPBACK && slot->type == SOCK_DGRAM &&
-            network->build_profile && address->port == 0U &&
+        if (slot->protocol == IPPROTO_UDP && address->port == 0U &&
+            (network->policy == SUCRUNE_NETWORK_OUTBOUND || network->build_profile) &&
             address->scope_id == 0U && address->flowinfo == 0U &&
             memcmp(address->address, unspecified, sizeof(unspecified)) == 0) {
             if (address->family == AF_INET) {
@@ -266,24 +311,16 @@ static int route_address(struct sucrune_network_broker *network, struct sucrune_
     if (loopback(address)) return ensure_udp_loopback_source(slot,address);
     if (network->policy!=SUCRUNE_NETWORK_OUTBOUND || slot->type!=SOCK_STREAM ||
         !outbound_unicast(address)) return -EACCES;
-    if (!slot->network_selected && network->hooks.select_socket!=NULL) {
-        int error=network->hooks.select_socket(network->hooks.context,slot->fd);
-        if (error!=0) return error;
-        slot->network_selected=1;
-    }
-    return 0;
+    return select_outbound(network, slot);
 }
-static int native_address(struct sucrune_network_broker *network, struct sucrune_net_slot *slot,
-        const struct sucrune_request *request, struct sockaddr_storage *output, socklen_t *length) {
-    int route=request->operation==SUCRUNE_NET_ROUTE;
-    if ((route && (request->args[2]!=(int64_t)request->size || (request->args[1]!=0 && request->args[1]!=1))) ||
-        (!route && (request->args[1]!=(int64_t)request->size || request->args[2]!=0))) return -EINVAL;
+static int decode_route(struct sucrune_network_broker *network, struct sucrune_net_slot *slot,
+        const void *bytes, size_t size, int binding, int source, struct sockaddr_storage *output, socklen_t *length) {
     struct sucrune_socket_address address;
-    int error=sucrune_socket_address_decode(request->data,request->size,&address);
+    int error=sucrune_socket_address_decode(bytes,size,&address);
     if (error!=0) return error;
     int domain=slot->domain;
-    if (address.family!=domain || request->size!=(domain==AF_INET ? 16U : 28U)) return -EINVAL;
-    error=route_address(network,slot,&address,request->operation==SUCRUNE_NET_BIND,route && request->args[1]==1);
+    if (address.family!=domain || size!=(domain==AF_INET ? 16U : 28U)) return -EINVAL;
+    error=route_address(network,slot,&address,binding,source);
     if (error!=0) return error;
     memset(output, 0, sizeof(*output));
     if (domain == AF_INET) {
@@ -294,6 +331,107 @@ static int native_address(struct sucrune_network_broker *network, struct sucrune
         memcpy(&native.sin6_addr, address.address, 16U); memcpy(output, &native, sizeof(native)); *length = sizeof(native);
     }
     return 0;
+}
+static int native_address(struct sucrune_network_broker *network, struct sucrune_net_slot *slot,
+        const struct sucrune_request *request, struct sockaddr_storage *output, socklen_t *length) {
+    int route=request->operation==SUCRUNE_NET_ROUTE;
+    if ((route && (request->args[2]!=(int64_t)request->size || (request->args[1]!=0 && request->args[1]!=1))) ||
+        (!route && (request->args[1]!=(int64_t)request->size || request->args[2]!=0))) return -EINVAL;
+    return decode_route(network,slot,request->data,request->size,request->operation==SUCRUNE_NET_BIND,
+        route && request->args[1]==1,output,length);
+}
+
+static int64_t create_echo_channel(struct sucrune_network_broker *network, int index,
+        int kernel_fd, int domain, int protocol, int *send_fd) {
+    int pair[2];
+    if (socketpair(AF_UNIX, SOCK_SEQPACKET | SOCK_NONBLOCK | SOCK_CLOEXEC, 0, pair) != 0) {
+        int error = errno;
+        (void)close(kernel_fd);
+        return -error;
+    }
+    if (network->echo_packet == NULL) {
+        network->echo_packet = malloc(SUCRUNE_NET_ECHO_PACKET_LIMIT);
+        if (network->echo_packet == NULL) {
+            (void)close(pair[0]); (void)close(pair[1]); (void)close(kernel_fd);
+            return -ENOMEM;
+        }
+    }
+    int64_t token = adopt(network, index, kernel_fd, domain, SOCK_DGRAM, protocol);
+    network->slots[index].echo_peer = pair[0];
+    network->echo_count++;
+    *send_fd = pair[1];
+    return token;
+}
+
+static int send_echo(struct sucrune_network_broker *network, struct sucrune_net_slot *slot,
+        const struct sucrune_request *request, struct sucrune_response *response) {
+    if (slot->echo_peer < 0) return -ENOTSOCK;
+    /* Consume the matching record even when the address or flags are denied.
+     * No previous payload may be reused after an unsuccessful send. */
+    ssize_t bytes = recv(slot->echo_peer, network->echo_packet, SUCRUNE_NET_ECHO_PACKET_LIMIT, MSG_DONTWAIT | MSG_TRUNC);
+    if (bytes < 0) return -errno;
+    if ((size_t)bytes > SUCRUNE_NET_ECHO_PACKET_LIMIT) return -EMSGSIZE;
+    if (request->args[2] != 0 || (request->args[1] & ~(int64_t)(MSG_DONTWAIT | MSG_NOSIGNAL))) return -EINVAL;
+    struct sockaddr_storage address;
+    socklen_t length = 0;
+    if (request->size != 0U) {
+        int error = decode_route(network, slot, request->data, request->size, 0, 0, &address, &length);
+        if (error != 0) return error;
+    }
+    ssize_t sent = sendto(slot->fd, network->echo_packet, (size_t)bytes, MSG_DONTWAIT | MSG_NOSIGNAL,
+        length ? (struct sockaddr *)&address : NULL, length);
+    if (sent < 0) return -errno;
+    sucrune_net_put_u32(response->data + SUCRUNE_NET_REPLY_HEADER, (uint32_t)sent);
+    response->size += 4U;
+    return 0;
+}
+
+static void forward_echo(struct sucrune_network_broker *network, struct sucrune_net_slot *slot) {
+    struct sockaddr_storage native;
+    socklen_t length = sizeof(native);
+    ssize_t bytes = recvfrom(slot->fd, network->echo_packet, SUCRUNE_NET_ECHO_PACKET_LIMIT, MSG_DONTWAIT,
+        (struct sockaddr *)&native, &length);
+    unsigned char header[SUCRUNE_NET_ECHO_SOURCE_BYTES] = {0};
+    int error = 0;
+    if (bytes < 0) {
+        if (errno == EAGAIN || errno == EINTR) return;
+        error = errno;
+    } else {
+        struct sucrune_socket_address source;
+        if (length != (slot->domain == AF_INET ? 16U : 28U) || native.ss_family != slot->domain ||
+            sucrune_socket_address_decode(&native, length, &source) != 0) return;
+        if (route_address(network, slot, &source, 0, 1) != 0) return;
+        size_t encoded = 0;
+        if (sucrune_socket_address_encode(&source, header, sizeof(header), &encoded) != 0) return;
+    }
+    if (error != 0) sucrune_net_put_u32(header + 4U, (uint32_t)error);
+    struct iovec pieces[] = {{header, sizeof(header)}, {network->echo_packet, bytes > 0 ? (size_t)bytes : 0U}};
+    struct msghdr message = {.msg_iov = pieces, .msg_iovlen = 2U};
+    /* A full or closed receiver drops a datagram just like a full socket
+     * receive queue. It never stalls sibling files, sockets or broker teardown. */
+    (void)sendmsg(slot->echo_peer, &message, MSG_DONTWAIT | MSG_NOSIGNAL);
+}
+
+int sucrune_network_wait_control(struct sucrune_network_broker *network, int control_fd) {
+    if (network->echo_count == 0U) return 0;
+    struct pollfd fds[1U + SUCRUNE_NET_RESOURCE_LIMIT] = {{.fd=control_fd, .events=POLLIN}};
+    struct sucrune_net_slot *slots[SUCRUNE_NET_RESOURCE_LIMIT];
+    nfds_t count = 1;
+    for (size_t i = 0; i < SUCRUNE_NET_RESOURCE_LIMIT; i++) {
+        struct sucrune_net_slot *slot = &network->slots[i];
+        if (slot->fd < 0 || slot->echo_peer < 0) continue;
+        slots[count - 1U] = slot;
+        fds[count++] = (struct pollfd){.fd=slot->fd, .events=POLLIN};
+    }
+    for (;;) {
+        if (poll(fds, count, -1) < 0) {
+            if (errno == EINTR) continue;
+            return -errno;
+        }
+        for (nfds_t i = 1; i < count; i++)
+            if (fds[i].revents) forward_echo(network, slots[i - 1U]);
+        if (fds[0].revents) return 0;
+    }
 }
 static int encode_address(const struct sockaddr_storage *storage, socklen_t length,
         struct sucrune_response *response) {
@@ -331,7 +469,7 @@ static int option_allowed(const struct sucrune_net_slot *slot, int level, int op
 static int build_udp_option(const struct sucrune_network_broker *network,const struct sucrune_net_slot *slot,
         int level,int option,int setting,int value) {
     if (!network->build_profile || network->policy!=SUCRUNE_NETWORK_LOOPBACK ||
-        slot->type!=SOCK_DGRAM) return 0;
+        slot->protocol!=IPPROTO_UDP) return 0;
     if (level==SOL_SOCKET && option==SO_BROADCAST) return !setting || value==0 || value==1;
     if (slot->domain==AF_INET && level==IPPROTO_IP && option==IP_MULTICAST_ALL) return !setting || value==0;
     return slot->domain==AF_INET6 && level==IPPROTO_IPV6 && option==IPV6_MULTICAST_HOPS && (!setting || value==1);
@@ -342,21 +480,27 @@ static int64_t control(struct sucrune_network_broker *network, unsigned int othe
     if (request->args[3] != SUCRUNE_NET_VERSION || request->reserved != 0U) return -EINVAL;
     if (operation == SUCRUNE_NET_EXEC_KEEP) return keep_after_exec(network,request);
     if (network->policy == SUCRUNE_NETWORK_NONE) return -EACCES;
-    if (operation == SUCRUNE_NET_SOCKET) {
+    if (operation == SUCRUNE_NET_SOCKET || operation == SUCRUNE_NET_ECHO_SOCKET) {
         if (request->size != 0U || (request->args[0] != AF_INET && request->args[0] != AF_INET6)) return -EAFNOSUPPORT;
         int64_t type64=request->args[1]&~(int64_t)(SOCK_NONBLOCK|SOCK_CLOEXEC);
         if ((type64!=SOCK_STREAM && type64!=SOCK_DGRAM) ||
             (type64==SOCK_STREAM && (request->args[1]&SOCK_NONBLOCK)==0)) return -EOPNOTSUPP;
-        int type=(int)type64,protocol=type==SOCK_STREAM ? IPPROTO_TCP : IPPROTO_UDP;
-        if (request->args[2]!=0 && request->args[2]!=protocol) return -EPROTONOSUPPORT;
+        int domain = (int)request->args[0], type = (int)type64;
+        int protocol = type == SOCK_STREAM ? IPPROTO_TCP : IPPROTO_UDP;
+        int echo_protocol = domain == AF_INET ? IPPROTO_ICMP : IPPROTO_ICMPV6;
+        if (operation == SUCRUNE_NET_ECHO_SOCKET) {
+            if (type != SOCK_DGRAM || request->args[2] != echo_protocol) return -EPROTONOSUPPORT;
+            protocol = echo_protocol;
+        } else if (request->args[2] != 0 && request->args[2] != protocol) return -EPROTONOSUPPORT;
         int index = free_slot(network, other); if (index < 0) return index;
-        int domain = (int)request->args[0];
         int fd=socket(domain,type|SOCK_NONBLOCK|SOCK_CLOEXEC,protocol);
         if (fd < 0) return -errno;
-        *send_fd=fd;return adopt(network,index,fd,domain,type);
+        if (operation == SUCRUNE_NET_ECHO_SOCKET) return create_echo_channel(network,index,fd,domain,protocol,send_fd);
+        *send_fd=fd;return adopt(network,index,fd,domain,type,protocol);
     }
     struct sucrune_net_slot *slot = lookup(network, request->args[0]);
     if (slot == NULL) return -EBADF;
+    if (operation == SUCRUNE_NET_ECHO_SEND) return send_echo(network,slot,request,response);
     if (operation==SUCRUNE_NET_BIND || operation==SUCRUNE_NET_CONNECT || operation==SUCRUNE_NET_ROUTE) {
         struct sockaddr_storage address; socklen_t length = 0;
         if (operation==SUCRUNE_NET_ROUTE && slot->type!=SOCK_DGRAM) return -EOPNOTSUPP;
@@ -378,7 +522,7 @@ static int64_t control(struct sucrune_network_broker *network, unsigned int othe
         if (!option_allowed(slot, level, option, setting) && !build_udp_option(network,slot,level,option,setting,value))
             return -ENOPROTOOPT;
         if (((level == IPPROTO_IP && option == IP_RECVERR) || (level == IPPROTO_IPV6 && option == IPV6_RECVERR)) &&
-            (slot->type != SOCK_DGRAM || slot->domain != (level == IPPROTO_IP ? AF_INET : AF_INET6))) return -ENOPROTOOPT;
+            (slot->protocol != IPPROTO_UDP || slot->domain != (level == IPPROTO_IP ? AF_INET : AF_INET6))) return -ENOPROTOOPT;
         if (setting) {
             if (slot->dns_registered && level==SOL_SOCKET && (option==SO_REUSEADDR || option==SO_REUSEPORT) && value!=0) return -EACCES;
             if (level == SOL_SOCKET && (option == SO_RCVBUF || option == SO_SNDBUF) &&
@@ -409,7 +553,7 @@ static int64_t control(struct sucrune_network_broker *network, unsigned int othe
             if (fd < 0) return -errno;
             error = encode_address(&address, length, response);
             if (error != 0) { (void)close(fd); return error; }
-            *send_fd=fd;return adopt(network,index,fd,slot->domain,SOCK_STREAM);
+            *send_fd=fd;return adopt(network,index,fd,slot->domain,SOCK_STREAM,IPPROTO_TCP);
         }
         case SUCRUNE_NET_NAME: {
             if (request->args[1] != 0 && request->args[1] != 1) return -EINVAL;
@@ -417,7 +561,7 @@ static int64_t control(struct sucrune_network_broker *network, unsigned int othe
             int result = request->args[1] == 0 ? getsockname(slot->fd, (struct sockaddr *)&address, &length) :
                 getpeername(slot->fd, (struct sockaddr *)&address, &length);
             if (result!=0) return -errno;
-            if (request->args[1]==1 && address.ss_family==AF_INET && length==sizeof(struct sockaddr_in)) {
+            if (request->args[1]==1 && slot->protocol!=IPPROTO_ICMP && address.ss_family==AF_INET && length==sizeof(struct sockaddr_in)) {
                 struct sockaddr_in peer;memcpy(&peer,&address,sizeof(peer));
                 if (network->hooks.dns_port!=0U && peer.sin_addr.s_addr==htonl(INADDR_LOOPBACK) && ntohs(peer.sin_port)==network->hooks.dns_port) {
                     if (!slot->dns_registered) return -EACCES;
@@ -428,11 +572,11 @@ static int64_t control(struct sucrune_network_broker *network, unsigned int othe
         }
         case SUCRUNE_NET_SHUTDOWN:
             if (request->args[1] < SHUT_RD || request->args[1] > SHUT_RDWR) return -EINVAL;
+            if (slot->echo_peer >= 0) return -EOPNOTSUPP;
             return shutdown(slot->fd, (int)request->args[1]) == 0 ? 0 : -errno;
         case SUCRUNE_NET_RELEASE: {
             if (request->args[1] != 0) return -EINVAL;
-            revoke_dns(network,slot);int fd=slot->fd;slot->fd=-1;network->count--;
-            return close(fd) == 0 ? 0 : -errno;
+            return release_slot(network,slot);
         }
         default: return -ENOSYS;
     }

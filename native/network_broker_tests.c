@@ -19,8 +19,8 @@ static void wire_tokens(void) {
         CHECK(!sucrune_net_token_valid((int64_t)((SUCRUNE_NET_TOKEN_PREFIX | UINT64_C(64)) ^ (UINT64_C(1) << bit))));
     CHECK(!sucrune_net_token_valid(-1) && !sucrune_net_token_valid(3) && !sucrune_net_token_valid(66));
     CHECK(!sucrune_net_operation(198U) && !sucrune_net_operation(SUCRUNE_BROKER_EXEC_COMMIT));
-    CHECK(!sucrune_net_operation(SUCRUNE_NET_SOCKET - 1U) && !sucrune_net_operation(SUCRUNE_NET_EXEC_KEEP + 1U));
-    for (uint32_t operation = SUCRUNE_NET_SOCKET; operation <= SUCRUNE_NET_EXEC_KEEP; operation++) CHECK(sucrune_net_operation(operation));
+    CHECK(!sucrune_net_operation(SUCRUNE_NET_SOCKET - 1U) && !sucrune_net_operation(SUCRUNE_NET_ECHO_SEND + 1U));
+    for (uint32_t operation = SUCRUNE_NET_SOCKET; operation <= SUCRUNE_NET_ECHO_SEND; operation++) CHECK(sucrune_net_operation(operation));
     passed++;
 }
 #if !defined(SUCRUNE_NETWORK_WIRE_ONLY)
@@ -147,6 +147,65 @@ static struct client child_session(struct client parent,int expected) {
     CHECK(exchange(parent,&fork,&child.fd).result==expected);
     CHECK((child.fd>=0)==(expected==0));
     return child;
+}
+static struct client linux_session(const char *workspace) {
+    struct client client;
+    client.fd = sucrune_workspace_broker_profile(workspace, &client.done, SUCRUNE_NETWORK_LOOPBACK, 0, SUCRUNE_WORKSPACE_LINUX);
+    CHECK(client.fd >= 0 && client.done >= 0);
+    return client;
+}
+static int open_tcp_table(struct client client) {
+    struct sucrune_request request = packet(SUCRUNE_BROKER_PROC_NET_OPEN);
+    request.args[0] = SUCRUNE_SYS_TCP;
+    request.args[1] = O_CLOEXEC;
+    request.args[2] = 95123;
+    int64_t slot = exchange(client, &request, NULL).result;
+    CHECK(slot >= 3 && slot < INT32_MAX);
+    return (int)slot;
+}
+static void check_listener_rows(struct client client, int table, uint16_t port, size_t expected) {
+    struct sucrune_request request = packet(63);
+    request.args[0] = table;
+    request.args[1] = SUCRUNE_IO_LIMIT - 1;
+    struct sucrune_response response = exchange(client, &request, NULL);
+    CHECK(response.result > 0 && response.result == response.size && response.size < SUCRUNE_IO_LIMIT);
+    response.data[response.size] = 0;
+    char *text = (char *)response.data;
+    CHECK(strstr(text, "local_address") != NULL);
+    char marker[64];
+    snprintf(marker, sizeof(marker), "0100007F:%04X 00000000:0000 0A ", (unsigned int)port);
+    size_t matches = 0;
+    for (char *row = strstr(text, marker); row; row = strstr(row + strlen(marker), marker)) matches++;
+    CHECK(matches == expected);
+    if (expected) CHECK(strstr(text, " 95123 0 ") != NULL);
+    CHECK(simple(client, 57, table, 0) == 0);
+}
+static void scoped_socket_snapshots(const char *workspace) {
+    char other[] = "./sucrune-network-peer-XXXXXX";
+    CHECK(mkdtemp(other) != NULL);
+    char *other_root = realpath(other, NULL);
+    CHECK(other_root != NULL);
+    struct client owner = linux_session(workspace), observer = linux_session(workspace), outsider = linux_session(other_root);
+    struct remote_socket server = create_socket(owner);
+    struct sucrune_request bind_request = address_request(SUCRUNE_NET_BIND, server.token, 0);
+    CHECK(exchange(owner, &bind_request, NULL).result == 0);
+    CHECK(simple(owner, SUCRUNE_NET_LISTEN, server.token, 1) == 0);
+    uint16_t port = bound_port(owner, server);
+    struct client child = child_session(owner, 0);
+    check_listener_rows(observer, open_tcp_table(observer), port, 1);
+    check_listener_rows(outsider, open_tcp_table(outsider), port, 0);
+    release(owner, server);
+    int snapshot = open_tcp_table(observer);
+    CHECK(simple(child, SUCRUNE_NET_RELEASE, server.token, 0) == 0);
+    check_listener_rows(observer, open_tcp_table(observer), port, 0);
+    check_listener_rows(observer, snapshot, port, 1);
+    CHECK(close(child.fd) == 0);
+    finish(owner);
+    finish(observer);
+    finish(outsider);
+    CHECK(rmdir(other_root) == 0);
+    free(other_root);
+    passed++;
 }
 static void connected_fork_exec(const char *workspace) {
     struct client parent=start(workspace,SUCRUNE_NETWORK_LOOPBACK);
@@ -480,6 +539,149 @@ static int64_t set_int_option(struct sucrune_network_broker *network,int64_t tok
     return dispatch(network,&set,NULL).result;
 }
 
+/* Exercise the guest-facing rights and records. Only the broker can access
+ * the real Internet-family ping socket. */
+static void icmp_echo(const char *workspace, int domain) {
+    int protocol = domain == AF_INET ? IPPROTO_ICMP : IPPROTO_ICMPV6;
+    struct sucrune_request create = packet(SUCRUNE_NET_ECHO_SOCKET);
+    create.args[0] = domain;
+    create.args[1] = SOCK_DGRAM;
+    create.args[2] = protocol;
+    struct sucrune_network_broker network;
+    CHECK(sucrune_network_init(&network, SUCRUNE_NETWORK_NONE) == 0);
+    CHECK(dispatch(&network, &create, NULL).result == -EACCES);
+    sucrune_network_destroy(&network);
+    CHECK(sucrune_network_init(&network, SUCRUNE_NETWORK_LOOPBACK) == 0);
+    create.args[1] = SOCK_RAW;
+    CHECK(dispatch(&network, &create, NULL).result < 0);
+    create.args[1] = SOCK_DGRAM;
+    create.args[2] = domain == AF_INET ? IPPROTO_ICMPV6 : IPPROTO_ICMP;
+    CHECK(dispatch(&network, &create, NULL).result < 0);
+    create.args[2] = protocol;
+    create.operation = SUCRUNE_NET_SOCKET;
+    CHECK(dispatch(&network, &create, NULL).result < 0);
+    create.operation = SUCRUNE_NET_ECHO_SOCKET;
+    sucrune_network_destroy(&network);
+
+    int reference = socket(domain, SOCK_DGRAM | SOCK_NONBLOCK | SOCK_CLOEXEC, protocol);
+    int native_error = errno;
+    struct client client = start(workspace, SUCRUNE_NETWORK_LOOPBACK);
+    int fd = -1;
+    struct sucrune_response reply = exchange(client, &create, &fd);
+    if (reference < 0) {
+        CHECK((native_error == EACCES || native_error == EPERM || native_error == EPROTONOSUPPORT ||
+            native_error == EAFNOSUPPORT) && reply.result == -native_error && fd < 0);
+        fprintf(stderr, "ICMP family %d: kernel declined datagram ping (%s), no packet test\n",
+            domain, strerror(native_error));
+        finish(client);
+        passed++;
+        return;
+    }
+    CHECK(close(reference) == 0 && fd >= 0 && sucrune_net_token_valid(reply.result));
+    const int64_t token = reply.result;
+    int value = 0;
+    socklen_t size = sizeof(value);
+    CHECK(getsockopt(fd, SOL_SOCKET, SO_DOMAIN, &value, &size) == 0 && value == AF_UNIX);
+    size = sizeof(value);
+    CHECK(getsockopt(fd, SOL_SOCKET, SO_TYPE, &value, &size) == 0 && value == SOCK_SEQPACKET);
+    CHECK((fcntl(fd, F_GETFL) & O_NONBLOCK) != 0 && (fcntl(fd, F_GETFD) & FD_CLOEXEC) != 0);
+
+    struct sucrune_request send_packet = packet(SUCRUNE_NET_ECHO_SEND);
+    send_packet.args[0] = token;
+    send_packet.size = domain == AF_INET ? 16U : 28U;
+    send_packet.data[0] = (unsigned char)domain;
+    size_t addr = domain == AF_INET ? 4U : 8U, addr_length = domain == AF_INET ? 4U : 16U;
+    send_packet.data[addr + addr_length - 1] = 1;
+    unsigned char payload[] = {8, 0, 0x62, 0x56, 0, 0, 0, 1, 0x51, 0x41, 0x44, 0x67};
+    if (domain == AF_INET6) { payload[0] = 128; payload[2] = 0; payload[3] = 0; }
+    send_packet.data[addr] = (unsigned char)(domain == AF_INET ? 224 : 255);
+    CHECK(send(fd, payload, sizeof(payload), MSG_NOSIGNAL) == sizeof(payload));
+    CHECK(exchange(client, &send_packet, NULL).result == -EACCES);
+    send_packet.data[addr] = (unsigned char)(domain == AF_INET ? 192 : 32);
+    CHECK(send(fd, payload, sizeof(payload), MSG_NOSIGNAL) == sizeof(payload));
+    CHECK(exchange(client, &send_packet, NULL).result == -EACCES);
+
+    send_packet.data[addr] = (unsigned char)(domain == AF_INET ? 127 : 0);
+    CHECK(send(fd, payload, sizeof(payload), MSG_NOSIGNAL) == sizeof(payload));
+    reply = exchange(client, &send_packet, NULL);
+    CHECK(reply.result == 0 && reply.size == SUCRUNE_NET_REPLY_HEADER + 4U &&
+        sucrune_net_u32(reply.data + SUCRUNE_NET_REPLY_HEADER) == sizeof(payload));
+    struct sucrune_request name = packet(SUCRUNE_NET_NAME);
+    name.args[0] = token;
+    reply = exchange(client, &name, NULL);
+    CHECK(reply.result == 0 && reply.size == SUCRUNE_NET_REPLY_HEADER + send_packet.size);
+    const unsigned char *local = reply.data + SUCRUNE_NET_REPLY_HEADER;
+    CHECK(local[0] == domain && (local[2] != 0 || local[3] != 0));
+
+    unsigned char received[64];
+    wait_ready(fd, POLLIN);
+    CHECK(recv(fd, received, sizeof(received), 0) == (ssize_t)(28U + sizeof(payload)));
+    CHECK(received[0] == domain && received[1] == 0 &&
+        memcmp(received + addr, send_packet.data + addr, addr_length) == 0);
+    if (domain == AF_INET) for (size_t i = 16U; i < 28U; i++) CHECK(received[i] == 0);
+    const unsigned char *body = received + 28;
+    CHECK(body[0] == (domain == AF_INET ? 0 : 129) && body[1] == 0 &&
+        body[4] == local[2] && body[5] == local[3] && memcmp(body + 6, payload + 6, sizeof(payload)-6U) == 0);
+    CHECK(simple(client, SUCRUNE_NET_RELEASE, token, 0) == 0);
+    CHECK(exchange(client, &send_packet, NULL).result == -EBADF);
+    CHECK(close(fd) == 0);
+
+    struct sucrune_guest_network guest;
+    sucrune_guest_network_init(&guest, client.fd);
+    fd = sucrune_guest_network_socket(&guest, domain, SOCK_DGRAM, protocol);
+    CHECK(fd >= 0 && sucrune_guest_network_echo_domain(&guest, fd) == domain);
+    unsigned char large[8193], roundtrip[sizeof(large)];
+    for (size_t i = 8; i < sizeof(large); i++) large[i] = (unsigned char)(i * 19U);
+    memcpy(large, payload, 8);
+    large[2] = large[3] = 0; large[7] = 2;
+    if (domain == AF_INET) {
+        uint32_t sum = 0;
+        for (size_t i = 0; i < sizeof(large); i++) sum += i % 2 ? large[i] : (uint32_t)large[i] << 8;
+        while (sum >> 16U) sum = (sum & UINT16_MAX) + (sum >> 16U);
+        large[2] = (unsigned char)(~sum >> 8U); large[3] = (unsigned char)~sum;
+    }
+    struct iovec parts[] = {{.iov_base = large, .iov_len = 8},
+        {.iov_base = large + 8, .iov_len = SUCRUNE_NET_ECHO_PACKET_LIMIT}};
+    struct msghdr output = {.msg_name = send_packet.data, .msg_namelen = send_packet.size,
+        .msg_iov = parts, .msg_iovlen = 2};
+    CHECK(sucrune_guest_network_echo_message(&guest, fd, 0, &output, 0) == -EMSGSIZE);
+    parts[1].iov_len = sizeof(large) - 8U;
+    CHECK(sucrune_guest_network_echo_message(&guest, fd, 0, &output, 0) == sizeof(large));
+    wait_ready(fd, POLLIN);
+    unsigned char source[28];
+    struct iovec short_buffer = {.iov_base = roundtrip, .iov_len = 3};
+    struct msghdr input = {.msg_name = source, .msg_namelen = sizeof(source),
+        .msg_iov = &short_buffer, .msg_iovlen = 1U};
+    CHECK(sucrune_guest_network_echo_message(&guest, fd, 1, &input, MSG_PEEK | MSG_TRUNC) == sizeof(large));
+    CHECK(input.msg_namelen == send_packet.size && (input.msg_flags & MSG_TRUNC) != 0);
+    short_buffer.iov_len = sizeof(roundtrip);
+    input.msg_namelen = sizeof(source);
+    CHECK(sucrune_guest_network_echo_message(&guest, fd, 1, &input, 0) == sizeof(large));
+    CHECK((input.msg_flags & MSG_TRUNC) == 0 && memcmp(roundtrip + 6, large + 6, sizeof(large)-6U) == 0);
+    CHECK(memcmp(source + addr, send_packet.data + addr, addr_length) == 0);
+    CHECK(sucrune_guest_network_release(&guest, fd) == 0);
+    finish(client);
+
+    /* Request a non-loopback unicast address. The injected hook rejects it
+     * before a packet can leave the test namespace. */
+    CHECK(sucrune_network_init(&network, SUCRUNE_NETWORK_OUTBOUND) == 0);
+    struct route_hooks seen = {0};
+    struct sucrune_network_hooks hooks = {.context = &seen, .select_socket = reject_selected_network};
+    CHECK(sucrune_network_set_hooks(&network, &hooks) == 0);
+    reply = dispatch(&network, &create, &fd);
+    CHECK(fd >= 0 && sucrune_net_token_valid(reply.result));
+    send_packet.args[0] = reply.result;
+    send_packet.data[addr] = (unsigned char)(domain == AF_INET ? 224 : 255);
+    CHECK(send(fd, payload, sizeof(payload), MSG_NOSIGNAL) == sizeof(payload));
+    CHECK(dispatch(&network, &send_packet, NULL).result == -EACCES && seen.selections == 0);
+    send_packet.data[addr] = (unsigned char)(domain == AF_INET ? 192 : 32);
+    CHECK(send(fd, payload, sizeof(payload), MSG_NOSIGNAL) == sizeof(payload));
+    CHECK(dispatch(&network, &send_packet, NULL).result == -ENETUNREACH && seen.selections == 1);
+    CHECK(close(fd) == 0);
+    sucrune_network_destroy(&network);
+    passed++;
+}
+
 /* Node's HTTP client sets the traffic class on TCP sockets when posting audio.
  * Compare both sides of the broker with the actual kernel socket. */
 static void tcp_traffic_class(int domain) {
@@ -656,6 +858,16 @@ static void managed_dns_route_and_generation(void) {
     CHECK(sucrune_network_init(&network, SUCRUNE_NETWORK_OUTBOUND) == 0);
     CHECK(sucrune_network_set_hooks(&network, &hooks) == 0);
     struct remote_socket udp = manager_socket(&network, SOCK_DGRAM);
+    /* nslookup explicitly binds an ephemeral wildcard source before querying DNS. */
+    struct sucrune_request local = address_request(SUCRUNE_NET_BIND, udp.token, 42);
+    memset(local.data + 4U, 0, 4U);
+    CHECK(dispatch(&network, &local, NULL).result == -EACCES);
+    local.data[3] = 0;
+    CHECK(dispatch(&network, &local, NULL).result == 0);
+    struct sockaddr_in bound;
+    socklen_t bound_size = sizeof(bound);
+    CHECK(getsockname(udp.fd, (struct sockaddr *)&bound, &bound_size) == 0);
+    CHECK(bound.sin_addr.s_addr == htonl(INADDR_LOOPBACK) && bound.sin_port != 0);
     struct sucrune_request physical_source = route_request(udp.token, 1, echo_port, 1U);
     CHECK(dispatch(&network, &physical_source, NULL).result == -EACCES);
     struct sucrune_request physical_dest = route_request(udp.token, 0, echo_port, 1U);
@@ -719,10 +931,12 @@ int main(void) {
     policy_and_tokens(absolute); tcp_roundtrip(absolute); resource_quota_and_cleanup(absolute); client_adapter_rollback(absolute);
     udp_adapter_roundtrip(absolute); outbound_policy_without_external_traffic(); managed_dns_route_and_generation();
     tcp_traffic_class(AF_INET); tcp_traffic_class(AF_INET6);
+    icmp_echo(absolute, AF_INET); icmp_echo(absolute, AF_INET6);
     build_udp_ephemeral_listener(AF_INET); build_udp_ephemeral_listener(AF_INET6);
     connected_fork_exec(absolute);
     listener_fork_exec(absolute, AF_INET);
     listener_fork_exec(absolute, AF_INET6);
+    scoped_socket_snapshots(absolute);
     CHECK(fd_count() == before); CHECK(rmdir(absolute) == 0); free(absolute);
 #endif
     printf("Network broker: %u/%u groups passed; no Android isolated-runner or Internet capability claim.\n", passed, passed);

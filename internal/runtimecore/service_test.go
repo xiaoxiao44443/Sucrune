@@ -206,6 +206,53 @@ func TestExecutionActiveGuardTerminalImmutabilityAndHistory(t *testing.T) {
 	}
 }
 
+func TestDeleteProjectPurgesOnlyItsTerminalHistoryAndResumesAfterRestart(t *testing.T) {
+	root := t.TempDir()
+	service := openTestService(t, root)
+	diagnostic := createTestEnvironment(t, service, "diagnostic")
+	other := createTestEnvironment(t, service, "normal")
+	newRecord := func(envID string) Execution {
+		return success[Execution](t, call(t, service, map[string]any{"op": "exec.create", "env_id": envID}))
+	}
+	finish := func(record Execution) {
+		success[Execution](t, call(t, service, map[string]any{"op": "exec.finish", "execution_id": record.ExecutionID, "state": "exited", "exit_code": 0}))
+	}
+	foreign := newRecord(other.ID)
+	finish(foreign)
+	first := newRecord(diagnostic.ID)
+	finish(first)
+	second := newRecord(diagnostic.ID)
+	purge := map[string]any{"op": "env.delete", "env_id": diagnostic.ID, "purge_execution_history": true}
+	failure(t, call(t, service, purge), "conflict")
+	success[Execution](t, call(t, service, map[string]any{"op": "exec.get", "execution_id": first.ExecutionID}))
+	finish(second)
+	// Simulate manager death after the first atomic detach. The stage can
+	// already be partly erased while every visible record remains readable.
+	parent := filepath.Join(root, "executions")
+	stage := filepath.Join(parent, ".pending-purge-"+diagnostic.ID)
+	if err := os.Mkdir(stage, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Rename(filepath.Join(parent, first.ExecutionID), filepath.Join(stage, first.ExecutionID)); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(stage, first.ExecutionID, "initial.json")); err != nil {
+		t.Fatal(err)
+	}
+	service = openTestService(t, root)
+	success[any](t, call(t, service, purge))
+	success[any](t, call(t, service, purge)) // Caller may miss a successful result.
+	failure(t, call(t, service, map[string]any{"op": "env.get", "env_id": diagnostic.ID}), "not_found")
+	for _, id := range []string{first.ExecutionID, second.ExecutionID} {
+		failure(t, call(t, service, map[string]any{"op": "exec.get", "execution_id": id}), "not_found")
+	}
+	success[Execution](t, call(t, service, map[string]any{"op": "exec.get", "execution_id": foreign.ExecutionID}))
+	if _, err := os.Lstat(stage); !os.IsNotExist(err) {
+		t.Fatalf("purge staging remains: %v", err)
+	}
+	failure(t, call(t, service, map[string]any{"op": "env.delete", "env_id": "", "purge_execution_history": true}), "invalid_arguments")
+}
+
 func TestManagerRestartMarksRunningLostAndAllowsNextExecution(t *testing.T) {
 	root := t.TempDir()
 	service := openTestService(t, root)

@@ -12,15 +12,37 @@ import (
 
 const inodeMarkerPrefix = "sucrune:inode:v1:"
 const inodeStoreSuffix = ".sucrune-inodes-v1"
+const sharedToolPrefix = "sucrune:base:v1:"
+
+// A marker carries only a package mode and digest. Its target is resolved in
+// the manager's immutable public tool store, never relative to a guest path.
+func sharedToolKey(marker string) (string, bool) {
+	key, ok := strings.CutPrefix(marker, sharedToolPrefix)
+	if !ok || len(key) != 69 || key[0] != '0' || key[4] != '-' {
+		return "", false
+	}
+	for _, digit := range key[1:4] {
+		if digit < '0' || digit > '7' {
+			return "", false
+		}
+	}
+	for _, digit := range key[5:] {
+		if !(digit >= '0' && digit <= '9' || digit >= 'a' && digit <= 'f') {
+			return "", false
+		}
+	}
+	return key, true
+}
 
 // The broker creates these markers only when a guest actually needs a hard
 // link. The body keeps its original host inode. Its ID is scoped to this
 // environment's private store, which is outside its visible workspace.
 type linkedInode struct {
-	store string
-	id    string
-	refs  uint32
-	body  *os.File
+	store      string
+	id         string
+	refs       uint32
+	body       *os.File
+	sharedTool bool
 }
 
 func inodeMarkerID(target string) (string, bool) {
@@ -73,6 +95,21 @@ func inspectMarker(root, target string, readBody bool) (*linkedInode, error) {
 	if err != nil {
 		return nil, err
 	}
+	if key, shared := sharedToolKey(marker); shared {
+		environments := filepath.Dir(filepath.Dir(root))
+		if filepath.Base(root) != "workspace" || filepath.Base(environments) != "environments" {
+			return nil, badInode()
+		}
+		store := filepath.Join(filepath.Dir(environments), "shared-tools-v1")
+		if err := realDirectory(store); err != nil {
+			return nil, badInode()
+		}
+		file, err := openInodeFile(store, key, !readBody, false)
+		if err != nil {
+			return nil, badInode()
+		}
+		return &linkedInode{body: file, sharedTool: true}, nil
+	}
 	id, valid := inodeMarkerID(marker)
 	if !valid {
 		return nil, problem("unsafe_path", "symlinks are not supported")
@@ -111,7 +148,9 @@ func inspectMarker(root, target string, readBody bool) (*linkedInode, error) {
 // temp finish before the namespace becomes dirty. The broker's recovery
 // counts actual markers if a crash interrupts publication.
 func publishWorkspaceFile(temp, destination string, alias *linkedInode) error {
-	if alias == nil {
+	// Shared objects have no per-environment link count to update. Atomic
+	// replacement detaches this name while existing readers keep their fd.
+	if alias == nil || alias.sharedTool {
 		if err := replaceFile(temp, destination); err != nil {
 			return err
 		}

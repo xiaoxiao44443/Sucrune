@@ -151,9 +151,9 @@ static int response_valid(uint32_t operation, const struct sucrune_response *res
     uint32_t count = sucrune_net_u32(response->data + 4U);
     if (count > 1U || count != (fd >= 0 ? 1U : 0U)) return 0;
     if (response->result < 0) return count == 0U && response->size == SUCRUNE_NET_REPLY_HEADER;
-    if (operation == SUCRUNE_NET_SOCKET || operation == SUCRUNE_NET_ACCEPT) {
+    if (operation == SUCRUNE_NET_SOCKET || operation == SUCRUNE_NET_ECHO_SOCKET || operation == SUCRUNE_NET_ACCEPT) {
         if (!sucrune_net_token_valid(response->result) || count != 1U) return 0;
-        if (operation == SUCRUNE_NET_SOCKET) return response->size == SUCRUNE_NET_REPLY_HEADER;
+        if (operation != SUCRUNE_NET_ACCEPT) return response->size == SUCRUNE_NET_REPLY_HEADER;
     } else if (response->result != 0 || count != 0U) return 0;
     if (operation == SUCRUNE_NET_NAME || operation == SUCRUNE_NET_ACCEPT || operation == SUCRUNE_NET_ROUTE) {
         size_t length = response->size - SUCRUNE_NET_REPLY_HEADER;
@@ -161,16 +161,22 @@ static int response_valid(uint32_t operation, const struct sucrune_response *res
         return (length == 16U && address[0] == AF_INET && address[1] == 0U) ||
             (length == 28U && address[0] == AF_INET6 && address[1] == 0U);
     }
-    return response->size == SUCRUNE_NET_REPLY_HEADER + (operation == SUCRUNE_NET_GETOPT ? 4U : 0U);
+    return response->size == SUCRUNE_NET_REPLY_HEADER + ((operation == SUCRUNE_NET_GETOPT || operation == SUCRUNE_NET_ECHO_SEND) ? 4U : 0U);
 }
 static int admitted_socket(int fd, uint32_t operation) {
-    if (operation==SUCRUNE_BROKER_FORK_SESSION) {
+    if (operation == SUCRUNE_BROKER_FORK_SESSION || operation == SUCRUNE_NET_ECHO_SOCKET) {
         int type=0; socklen_t length=sizeof(type);
         if (getsockopt(fd,SOL_SOCKET,SO_TYPE,&type,&length)!=0) return errno==ENOTSOCK ? -EPROTO : -errno;
         if (length!=sizeof(type) || type!=SOCK_SEQPACKET) return -EPROTO;
         struct sockaddr_storage peer; length=sizeof(peer);
         if (getpeername(fd,(struct sockaddr *)&peer,&length)!=0) return -errno;
         if (length<sizeof(sa_family_t) || peer.ss_family!=AF_UNIX) return -EPROTO;
+        if (operation == SUCRUNE_NET_ECHO_SOCKET) {
+            if (length != sizeof(sa_family_t)) return -EPROTO;
+            int status = fcntl(fd, F_GETFL);
+            if (status < 0) return -errno;
+            if ((status & O_NONBLOCK) == 0) return -EPROTO;
+        }
         int flags=fcntl(fd,F_GETFD);
         return flags<0 ? -errno : (flags&FD_CLOEXEC)!=0 ? 0 : -EPROTO;
     }
@@ -188,7 +194,8 @@ static int admitted_socket(int fd, uint32_t operation) {
     }
     if ((values[1]!=AF_INET && values[1]!=AF_INET6) ||
         !((values[0]==SOCK_STREAM && values[2]==IPPROTO_TCP) ||
-          (operation==SUCRUNE_NET_SOCKET && values[0]==SOCK_DGRAM && values[2]==IPPROTO_UDP))) return -EPROTO;
+          (operation==SUCRUNE_NET_SOCKET && values[0]==SOCK_DGRAM &&
+           values[2]==IPPROTO_UDP))) return -EPROTO;
     int descriptor_flags = fcntl(fd, F_GETFD), status = fcntl(fd, F_GETFL);
     if (descriptor_flags < 0 || status < 0) return -errno;
     return (descriptor_flags & FD_CLOEXEC) != 0 && (status & O_NONBLOCK) != 0 ? 0 : -EPROTO;
@@ -277,9 +284,12 @@ int sucrune_broker_exchange(int fd, const struct sucrune_request *request,
     int checked_fd=-1;
     error=receive_response(fd,request->operation,&checked,received_fd!=NULL ? &checked_fd : NULL,end);
     if (error==0 && checked_fd>=0 && request->operation==SUCRUNE_NET_SOCKET) {
-        const int options[2]={SO_DOMAIN,SO_TYPE};
-        const int64_t expected[2]={request->args[0],request->args[1]&~(int64_t)(SOCK_NONBLOCK|SOCK_CLOEXEC)};
-        for (unsigned int i=0U;i<2U;i++) {
+        const int options[] = {SO_DOMAIN, SO_TYPE, SO_PROTOCOL};
+        int64_t type = request->args[1] & ~(int64_t)(SOCK_NONBLOCK | SOCK_CLOEXEC);
+        int64_t protocol = request->args[2];
+        if (protocol == 0) protocol = type == SOCK_STREAM ? IPPROTO_TCP : IPPROTO_UDP;
+        const int64_t expected[] = {request->args[0], type, protocol};
+        for (size_t i=0U;i<sizeof(options)/sizeof(options[0]);i++) {
             int value=0;socklen_t length=sizeof(value);
             int check=getsockopt(checked_fd,SOL_SOCKET,options[i],&value,&length)==0 ?
                 ((length==sizeof(value) && value==expected[i]) ? 0 : -EPROTO) : -errno;

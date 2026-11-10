@@ -11,6 +11,7 @@
 #include <sys/file.h>
 #include <sys/syscall.h>
 #include <unistd.h>
+#include "workspace_base.inc"
 
 #define PREFIX SUCRUNE_INODE_MARKER_PREFIX
 #define STORE_SUFFIX ".sucrune-inodes-v1"
@@ -35,7 +36,7 @@ static int store(struct sucrune_workspace_links *l,int create) {
     return 0;
 }
 int sucrune_links_init(struct sucrune_workspace_links *l,int root,const char *workspace) {
-    l->parent=-1;l->store=-1;
+    l->parent=-1;l->store=-1;l->base=-1;
     size_t end=strlen(workspace);
     while(end>1U && workspace[end-1U]=='/') end--;
     size_t begin=end;while(begin>0U && workspace[begin-1U]!='/') begin--;
@@ -52,15 +53,17 @@ int sucrune_links_init(struct sucrune_workspace_links *l,int root,const char *wo
     return rc;
 }
 int sucrune_links_clone(struct sucrune_workspace_links *l,const struct sucrune_workspace_links *p) {
-    *l=*p;l->store=-1;l->parent=openat(p->parent,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+    *l=*p;l->store=-1;l->base=-1;l->parent=openat(p->parent,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
     if(l->parent<0) return -errno;
     if(p->store>=0 && (l->store=fcntl(p->store,F_DUPFD_CLOEXEC,3))<0) return -errno;
+    if(p->base>=0 && (l->base=fcntl(p->base,F_DUPFD_CLOEXEC,3))<0) return -errno;
     return 0;
 }
 void sucrune_links_destroy(struct sucrune_workspace_links *l) {
     if(l->parent>=0) close(l->parent);
     if(l->store>=0) close(l->store);
-    l->parent=l->store=-1;
+    if(l->base>=0) close(l->base);
+    l->parent=l->store=l->base=-1;
 }
 /* Returns 1 only for the reserved, syntactically exact marker. */
 static int marker(int parent,const char *name,struct object *o) {
@@ -111,7 +114,7 @@ static int commit(struct sucrune_workspace_links *l,struct object *o,uint32_t co
     if(fsync(l->store)!=0 || unlinkat(l->store,o->dirty,0)!=0 || fsync(l->store)!=0) return -errno;
     return 0;
 }
-int sucrune_links_open(struct sucrune_workspace_links *l,int parent,const char *name,int flags,mode_t mode) {
+int sucrune_links_open(struct sucrune_workspace_links *l,int parent,const char *name,int flags,mode_t mode,ino_t *base_ino) {
     if ((flags & O_CREAT) != 0) {
         /* Only chmod a newly created inode. The manager has its own umask,
          * shared with unrelated threads; its process state must not change. */
@@ -129,6 +132,22 @@ int sucrune_links_open(struct sucrune_workspace_links *l,int parent,const char *
     int fd=openat(parent,name,flags|O_NOFOLLOW);
     if(fd>=0 || errno!=ELOOP) return fd>=0 ? fd : -errno;
     struct object o;int rc=marker(parent,name,&o);
+    if (!rc) {
+        char key[70];
+        mode_t original;
+        rc = base_key(parent, name, key, &original);
+        if (rc <= 0) return rc ? rc : -ELOOP;
+        if ((flags & O_ACCMODE) != O_RDONLY || (flags & O_TRUNC)) {
+            rc = sucrune_base_promote(l, parent, name);
+            if (rc < 0) return rc;
+            fd = openat(parent, name, flags | O_NOFOLLOW);
+            return fd < 0 ? -errno : fd;
+        }
+        struct stat st;
+        if (fstatat(parent, name, &st, AT_SYMLINK_NOFOLLOW)) return -errno;
+        if (base_ino) *base_ino = st.st_ino;
+        return base_body(l, key, original, flags);
+    }
     if(rc<=0) return rc<0 ? rc : -ELOOP;
     if((flags&(O_EXCL|O_CREAT))==(O_EXCL|O_CREAT)) return -EEXIST;
     if((rc=checked(l,&o))!=0) return rc;
@@ -136,12 +155,24 @@ int sucrune_links_open(struct sucrune_workspace_links *l,int parent,const char *
     return fd<0 ? -errno : fd;
 }
 int sucrune_links_target(struct sucrune_workspace_links *l,int fd) {
+    return sucrune_links_target_info(l, fd, NULL);
+}
+int sucrune_links_target_info(struct sucrune_workspace_links *l,int fd,ino_t *base_ino) {
     if(fd<0) return fd;
     struct stat st;
     if(fstat(fd,&st)!=0) {int error=-errno;close(fd);return error;}
     if(!S_ISLNK(st.st_mode)) return fd;
     struct object o;int rc=marker(fd,"",&o);
-    if(rc==0) return fd;
+    if(rc==0) {
+        char key[70];
+        mode_t mode;
+        rc = base_key(fd, "", key, &mode);
+        if (!rc) return fd;
+        close(fd);
+        if (rc < 0) return rc;
+        if (base_ino) *base_ino = st.st_ino;
+        return base_body(l, key, mode, O_PATH);
+    }
     close(fd);
     if(rc<0 || (rc=checked(l,&o))<0) return rc;
     fd=openat(l->store,o.id,O_PATH|O_NOFOLLOW|O_CLOEXEC);
@@ -160,6 +191,17 @@ static int sync_directory(int path_fd) {
     int fd=openat(path_fd,".",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
     if(fd<0) return -errno;
     int rc=fsync(fd)==0 ? 0 : -errno; close(fd);return rc;
+}
+int sucrune_links_tmp_write(struct sucrune_workspace_links *l,int root,const struct stat *st,int native) {
+    if (native) return sucrune_links_all_in_tmp(root,st,NULL,st->st_nlink);
+    if (store(l,0)<0) return -EACCES;
+    struct object o;
+    identity(st,o.id);names(&o);
+    struct stat body;
+    if (fstatat(l->store,o.id,&body,AT_SYMLINK_NOFOLLOW)!=0 ||
+        body.st_dev!=st->st_dev || body.st_ino!=st->st_ino) return -EACCES;
+    int rc=checked(l,&o);
+    return rc<0 ? rc : sucrune_links_all_in_tmp(root,st,o.id,o.count);
 }
 int sucrune_links_publish(struct sucrune_workspace_links *l,int source,const char *name,int pinned,int dest,const char *newname) {
     struct stat st,existing;
@@ -235,6 +277,12 @@ int sucrune_links_dirents(struct sucrune_workspace_links *l,int directory,unsign
                 if((rc=checked(l,&o))<0) return rc;
                 struct stat st;if(fstatat(l->store,o.id,&st,AT_SYMLINK_NOFOLLOW)!=0) return -errno;
                 uint64_t ino=(uint64_t)st.st_ino;memcpy(d,&ino,8);d[18]=DT_REG;
+            } else {
+                char key[70];
+                mode_t mode;
+                rc = base_key(directory, (char *)d+19, key, &mode);
+                if (rc < 0) return rc;
+                if (rc) d[18]=DT_REG;
             }
         }
         offset+=size;

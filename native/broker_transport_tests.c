@@ -131,23 +131,29 @@ static void bounded_wait_and_queued_cleanup(void) {
     CHECK(count_fds() == before); passed++;
 }
 
-/* An admitted UDP or TCP FD can still belong to the wrong request. Queue a
+/* An admitted TCP or datagram FD can still belong to the wrong request. Queue a
  * syntactically valid response from the peer before issuing the exchange so
  * the request-specific type check is exercised without another test thread. */
 static void reject_swapped_socket_types(void) {
     unsigned int before = count_fds();
-    const int types[] = {SOCK_DGRAM, SOCK_STREAM};
-    const int protocols[] = {IPPROTO_UDP, IPPROTO_TCP};
-    for (unsigned int i = 0U; i < 2U; i++) {
-        unsigned int other = 1U - i;
+    const struct {
+        uint32_t operation;
+        int requested_type, requested_protocol;
+        int returned_type, returned_protocol;
+    } cases[] = {
+        {SUCRUNE_NET_SOCKET, SOCK_DGRAM, IPPROTO_UDP, SOCK_STREAM, IPPROTO_TCP},
+        {SUCRUNE_NET_SOCKET, SOCK_STREAM, IPPROTO_TCP, SOCK_DGRAM, IPPROTO_UDP},
+        {SUCRUNE_NET_ECHO_SOCKET, SOCK_DGRAM, IPPROTO_ICMP, SOCK_DGRAM, IPPROTO_UDP},
+    };
+    for (size_t i = 0U; i < sizeof(cases) / sizeof(cases[0]); i++) {
         int channel[2];
         pair(channel);
-        int wrong = socket(AF_INET, types[other] | SOCK_NONBLOCK | SOCK_CLOEXEC, protocols[other]);
+        int wrong = socket(AF_INET, cases[i].returned_type | SOCK_NONBLOCK | SOCK_CLOEXEC, cases[i].returned_protocol);
         CHECK(wrong >= 0);
         struct sucrune_response malicious = create_reply();
         raw_send(channel[1], &malicious, offsetof(struct sucrune_response, data) + malicious.size, &wrong, 1U);
-        struct sucrune_request request = {.magic = SUCRUNE_BROKER_MAGIC, .operation = SUCRUNE_NET_SOCKET,
-            .args = {AF_INET, types[i] | SOCK_NONBLOCK, protocols[i], SUCRUNE_NET_VERSION}};
+        struct sucrune_request request = {.magic = SUCRUNE_BROKER_MAGIC, .operation = cases[i].operation,
+            .args = {AF_INET, cases[i].requested_type | SOCK_NONBLOCK, cases[i].requested_protocol, SUCRUNE_NET_VERSION}};
         struct sucrune_response received;
         memset(&received, 0xa5, sizeof(received));
         int right = 53;

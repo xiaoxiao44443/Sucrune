@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"sucrune/internal/storagefs"
 )
 
 var (
@@ -277,4 +279,53 @@ func (s *Service) hasActive(envID string) (bool, error) {
 	}
 	_, active := s.activeExecutions[envID]
 	return active, nil
+}
+
+// Called under the manager lock. Detach each complete record atomically so a
+// partial removal cannot make the execution index unreadable after restart.
+func (s *Service) purgeExecutionHistory(envID string) error {
+	if !environmentID.MatchString(envID) {
+		return problem("invalid_arguments", "invalid environment ID")
+	}
+	records, err := s.listExecutions(envID)
+	if err != nil {
+		return err
+	}
+	for _, record := range records {
+		if !terminalState(record.State) {
+			return problem("conflict", "environment has an active execution")
+		}
+	}
+	parent, err := s.executionRoot()
+	if err != nil {
+		return err
+	}
+	stage := filepath.Join(parent, ".pending-purge-"+envID)
+	if len(records) > 0 {
+		if err := os.Mkdir(stage, 0700); err != nil && !errors.Is(err, os.ErrExist) {
+			return err
+		}
+	}
+	if err := realDirectory(stage); err != nil {
+		if errors.Is(err, os.ErrNotExist) && len(records) == 0 {
+			return nil
+		}
+		return err
+	}
+	for _, record := range records {
+		source := filepath.Join(parent, record.ExecutionID)
+		if err := storagefs.RenameDirectory(source, filepath.Join(stage, record.ExecutionID)); err != nil {
+			return err
+		}
+	}
+	if err := syncDirectory(stage); err != nil {
+		return err
+	}
+	if err := syncDirectory(parent); err != nil {
+		return err
+	}
+	if err := os.RemoveAll(stage); err != nil {
+		return err
+	}
+	return syncDirectory(parent)
 }

@@ -54,9 +54,11 @@ int sucrune_exec_check_packet(const struct sucrune_guest_exec *p,size_t bytes,in
         p->text_size>sizeof(p->text) || bytes!=SUCRUNE_GUEST_EXEC_PREFIX(p->fd_limit)+p->text_size ||
         p->argc==0U || p->argc>SUCRUNE_GUEST_EXEC_ARGS || p->envc>SUCRUNE_GUEST_EXEC_ENV ||
         p->exec_depth==0U || p->exec_depth>32U || p->linux_jit>1U || p->build_profile>1U || p->script>1U) return EPROTO;
-    int protected_fds[4]={startup,p->broker,p->image_fd,p->interp_fd};
-    for (unsigned int i=0;i<4;i++) {
-        if (i==3 && protected_fds[i]==-1) continue;
+    if ((p->scope.bus<0)!=(p->scope.lease<0) || p->scope.bus < -1 || p->scope.lease < -1) return EPROTO;
+    if (p->scope.bus>=0 && (!socket_type(p->scope.bus,SOCK_SEQPACKET) || !socket_type(p->scope.lease,SOCK_SEQPACKET))) return EPROTO;
+    int protected_fds[6]={startup,p->broker,p->image_fd,p->interp_fd,p->scope.bus,p->scope.lease};
+    for (unsigned int i=0;i<6;i++) {
+        if (i>=3 && protected_fds[i]==-1) continue;
         if (protected_fds[i]<3) return EBADF;
         for (unsigned int j=0;j<i;j++) if (protected_fds[j]==protected_fds[i]) return EPROTO;
     }
@@ -80,7 +82,7 @@ int sucrune_exec_check_packet(const struct sucrune_guest_exec *p,size_t bytes,in
             if (a->local_alias!=-1 || (!file && !tty)) return EPROTO;
         } else {
             if (a->local_alias<3 || a->broker_handle!=-1 || fcntl(a->local_alias,F_GETFD)<0) return EBADF;
-            for (unsigned int j=0;j<4;j++) if (a->local_alias==protected_fds[j]) return EPROTO;
+            for (unsigned int j=0;j<6;j++) if (a->local_alias==protected_fds[j]) return EPROTO;
         }
         if (a->network_token!=0U) {
             if (a->kind!=SUCRUNE_FD_LOCAL || a->pty_kind!=SUCRUNE_PTY_NONE || (a->status_flags&O_NONBLOCK)==0 ||

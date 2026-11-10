@@ -38,6 +38,7 @@
 #include <ucontext.h>
 #include <fcntl.h>
 #include <sys/resource.h>
+#include <sys/times.h>
 #include <sys/time.h>
 #include <sys/file.h>
 #include <asm/hwcap.h>
@@ -57,6 +58,8 @@
 #include <sys/uio.h>
 #include <sys/ioctl.h>
 #include <sys/utsname.h>
+#include <sys/sysinfo.h>
+#include <sys/vfs.h>
 #include <sched.h>
 #include "guest_gates.h"
 #include "guest_processes.h"
@@ -184,6 +187,14 @@ static int can_receive_child(struct shell_state *s) {
 }
 static void collect_child_signal(struct shell_state *s) {
     struct sucrune_signal_thread *thread=current_signals(s);
+    if(s->inherited && s->inherited->scope.lease>=0) {
+        unsigned int signals=sucrune_scope_pending();
+        while(signals) {
+            unsigned int sig=(unsigned int)__builtin_ctz(signals)+1U;
+            signals&=signals-1U;
+            (void)sucrune_signals_self(&s->signal_process,thread,129,thread->pid,(int64_t)sig,0);
+        }
+    }
     uint64_t bit=UINT64_C(1)<<(SIGCHLD-1);
     if(s->signal_process.actions[SIGCHLD].handler>1U && ((thread->mask|thread->pending)&bit)!=0U) return;
     struct sucrune_signal_info info;
@@ -313,7 +324,8 @@ static int64_t open_project_file(struct shell_state *s, struct sucrune_request *
                                  struct sucrune_response *out, int *read_fd) {
     *read_fd = -1;
     int64_t opened;
-    if (s->linux_mode && !(r->args[1] & (O_ACCMODE | O_PATH | O_DIRECTORY))) {
+    if (s->linux_mode && r->operation != SUCRUNE_BROKER_PROC_NET_OPEN &&
+        !(r->args[1] & (O_ACCMODE | O_PATH | O_DIRECTORY))) {
         const bool exec = r->operation == SUCRUNE_BROKER_OPEN_EXEC;
         if (exec) r->args[3] = 1; /* permit a direct snapshot of the authorized executable */
         else r->operation = SUCRUNE_BROKER_OPEN_READ;
@@ -1231,7 +1243,8 @@ retry:
     int allowed = receiving ? MSG_DONTWAIT | MSG_PEEK | MSG_TRUNC : MSG_DONTWAIT | MSG_NOSIGNAL;
     if ((flags & ~(uint64_t)allowed) != 0U) return -EOPNOTSUPP;
     bool blocking = (resource->status_flags & O_NONBLOCK) == 0 && (flags & MSG_DONTWAIT) == 0U;
-    if (blocking && !s->build_profile) return -EOPNOTSUPP;
+    int echo_domain = sucrune_guest_network_echo_domain(&s->network, resource->handle);
+    if (blocking && !s->build_profile && !echo_domain) return -EOPNOTSUPP;
     struct iovec vectors[1024];
     struct sucrune_arm64_msghdr wire = {0};
     uint64_t address_pointer = args[4];
@@ -1277,15 +1290,18 @@ retry:
     if (!receiving && address_pointer != 0U) {
         if (address_capacity > sizeof(address)) return -EINVAL;
         if (address_capacity != 0U && !guest_memory(s, (uintptr_t)address_pointer, address_capacity, false)) return -EFAULT;
-    }
-    if (!receiving && address_pointer != 0U) {
-        if (address_capacity > sizeof(address)) return -EINVAL;
-        unsigned char guest_address[SUCRUNE_SOCKET_ADDRESS_LIMIT];
-        copy_bytes(guest_address, (const void *)(uintptr_t)address_pointer, address_capacity);
-        int routed = sucrune_guest_network_route(&s->network, resource->handle, 0,
-            guest_address, address_capacity, &address, sizeof(address), &routed_length);
-        if (routed != 0) return routed;
-        if (routed_length > sizeof(address)) return -EIO;
+        if (echo_domain) {
+            copy_bytes((unsigned char *)&address, (const void *)(uintptr_t)address_pointer, address_capacity);
+            routed_length = address_capacity;
+        } else {
+            unsigned char guest_address[SUCRUNE_SOCKET_ADDRESS_LIMIT];
+            if (address_capacity > sizeof(guest_address)) return -EINVAL;
+            copy_bytes(guest_address, (const void *)(uintptr_t)address_pointer, address_capacity);
+            int routed = sucrune_guest_network_route(&s->network, resource->handle, 0,
+                guest_address, address_capacity, &address, sizeof(address), &routed_length);
+            if (routed != 0) return routed;
+            if (routed_length > sizeof(address)) return -EIO;
+        }
     }
     struct msghdr message = {
         .msg_name = receiving || address_pointer != 0U ? &address : NULL,
@@ -1295,9 +1311,15 @@ retry:
     struct iovec staged = {.iov_base = s->datagram_buffer,
         .iov_len = total_bytes < sizeof(s->datagram_buffer) ? (size_t)total_bytes : sizeof(s->datagram_buffer)};
     if (receiving) {message.msg_iov = &staged; message.msg_iovlen = 1U;}
-    ssize_t result = receiving ? recvmsg(resource->handle, &message, (int)flags | MSG_DONTWAIT) :
-        sendmsg(resource->handle, &message, (int)flags | MSG_DONTWAIT | MSG_NOSIGNAL);
-    if (result < 0 && errno == EAGAIN && blocking) {
+    ssize_t result;
+    if (echo_domain) {
+        result = sucrune_guest_network_echo_message(&s->network, resource->handle, receiving, &message, (int)flags);
+    } else {
+        result = receiving ? recvmsg(resource->handle, &message, (int)flags | MSG_DONTWAIT) :
+            sendmsg(resource->handle, &message, (int)flags | MSG_DONTWAIT | MSG_NOSIGNAL);
+        if (result < 0) result = -errno;
+    }
+    if (result == -EAGAIN && blocking) {
         /* Pin the open description, not its guest fd number. Never wait
          * under the process state lock or retain guest pointers across it. */
         int held = sucrune_fds_hold(&s->descriptors, args[0]);
@@ -1317,15 +1339,20 @@ retry:
         if (dropped < 0) return dropped;
         goto retry;
     }
-    if (result < 0) return -errno;
+    if (result < 0) return result;
     if (receiving) {
         unsigned char guest_address[SUCRUNE_SOCKET_ADDRESS_LIMIT];
-        size_t guest_length = 0;
-        if (message.msg_namelen > sizeof(address)) return -EIO;
-        int routed = sucrune_guest_network_route(&s->network, resource->handle, 1,
-            &address, message.msg_namelen, guest_address, sizeof(guest_address), &guest_length);
-        if (routed != 0) return routed;
-        if (guest_length > sizeof(guest_address)) return -EIO;
+        size_t guest_length = message.msg_namelen;
+        if (guest_length > sizeof(address)) return -EIO;
+        if (echo_domain) {
+            if (guest_length > sizeof(guest_address)) return -EIO;
+            memcpy(guest_address, &address, guest_length);
+        } else {
+            int routed = sucrune_guest_network_route(&s->network, resource->handle, 1,
+                &address, message.msg_namelen, guest_address, sizeof(guest_address), &guest_length);
+            if (routed != 0) return routed;
+            if (guest_length > sizeof(guest_address)) return -EIO;
+        }
         if (address_pointer != 0U) {
             size_t copied = address_capacity < guest_length ? address_capacity : guest_length;
             if (copied != 0U && !guest_memory(s, (uintptr_t)address_pointer, copied, true)) return -EFAULT;
@@ -1412,6 +1439,16 @@ static int guest_pselect(struct shell_state *s,const uint64_t args[6]) {
 static int proc_descriptor(struct shell_state *s,uint64_t fd) {
     struct sucrune_fd_resource *r=sucrune_fds_get(&s->descriptors,fd);
     return r!=NULL && r->kind==SUCRUNE_FD_LOCAL && sucrune_proc_has(&s->proc,r->handle)?r->handle:0;
+}
+static int proc_at_path_arg(struct shell_state *s,struct sucrune_request *r,uint64_t fd,uintptr_t address) {
+    int error=path_arg(s,r,address);
+    if (error || !s->linux_mode || !r->data[0] || r->data[0]=='/') return error;
+    if (sucrune_proc_net_dir_fd(&s->proc,proc_descriptor(s,fd))) {
+        int size=sucrune_proc_net_at((char *)r->data,r->size,SUCRUNE_PATH_LIMIT);
+        if (size<0) return -size;
+        r->size=(uint32_t)size;
+    }
+    return 0;
 }
 static int proc_path_stat(struct shell_state *s,const char *path,struct sucrune_arm64_stat *out) {
     return sucrune_proc_path_stat(s->processes,path,out);
@@ -1548,8 +1585,6 @@ static int64_t guest_call(struct shell_state *s, int operation, uint64_t *args) 
             if (resource == NULL) return -EBADF;
             if (!sucrune_guest_network_contains(&s->network, resource->handle) || resource->kind != SUCRUNE_FD_LOCAL)
                 return -ENOTSOCK;
-            if (operation == 201 && (resource->status_flags & O_NONBLOCK) == 0 &&
-                sucrune_guest_network_type(&s->network, resource->handle) == SOCK_STREAM) return -EOPNOTSUPP;
             size_t unused = 0;
             if (operation == 200 || operation == 203) {
                 if (args[2] > SUCRUNE_SOCKET_ADDRESS_LIMIT) return -EINVAL;
@@ -1673,10 +1708,19 @@ retry_stream_data:
             unsigned char address[SUCRUNE_SOCKET_ADDRESS_LIMIT]; size_t length = 0;
             size_t capacity = requested < sizeof(address) ? requested : sizeof(address);
             int flags = operation == 242 ? (int)args[3] : 0;
-            int handle = sucrune_guest_network_accept(&s->network, resource->handle, flags, address, capacity, &length);
+            if (flags & ~(SOCK_CLOEXEC | SOCK_NONBLOCK)) return -EINVAL;
+            int handle;
+            for (;;) {
+                handle = sucrune_guest_network_accept(&s->network, resource->handle,
+                    flags | SOCK_NONBLOCK, address, capacity, &length);
+                if (handle != -EAGAIN || (resource->status_flags & O_NONBLOCK)) break;
+                int ready = wait_stream_ready(s, args[0], resource, POLLIN);
+                if (ready < 0) return ready;
+            }
             if (handle < 0) return handle;
             size_t copied = capacity < length ? capacity : length;
-            if (copied != 0U && !guest_memory(s, output_address, copied, true)) {
+            if ((copied != 0U && !guest_memory(s, output_address, copied, true)) ||
+                (output_address != 0U && !guest_memory(s, size_address, sizeof(uint32_t), true))) {
                 (void)sucrune_guest_network_release(&s->network, handle); return -EFAULT;
             }
             int descriptor = publish_network_descriptor(s, handle, flags);
@@ -1964,6 +2008,42 @@ retry_stream_data:
             }
             return total;
         }
+        case 43: case 44: {
+            if (!s->linux_mode) return -ENOSYS;
+            uintptr_t dest=(uintptr_t)args[1];
+            struct statfs volume={0};
+            if (!guest_memory(s,dest,sizeof(volume),true)) return -EFAULT;
+            if (operation==43) {
+                error=path_arg(s,&request,(uintptr_t)args[0]);
+                if (error) return -error;
+                const char *path=(const char *)request.data;
+                const char *device=sucrune_device_path(request.data);
+                if (sucrune_proc_path(path)) {
+                    struct sucrune_arm64_stat st;
+                    int rc=proc_path_stat(s,path,&st);
+                    if(rc<0) return rc;
+                    device="/proc";
+                }
+                if (device) {
+                    if (statfs(device,&volume)<0) return -errno;
+                    memcpy((void *)dest,&volume,sizeof(volume)); return 0;
+                }
+                request.args[0]=AT_FDCWD;
+            } else {
+                struct sucrune_fd_resource *res=sucrune_fds_get(&s->descriptors,args[0]);
+                if (!res) return -EBADF;
+                if(res->kind!=SUCRUNE_FD_BROKER) {
+                    if(proc_descriptor(s,args[0])) { if(statfs("/proc",&volume)<0) return -errno; }
+                    else if(fstatfs(res->handle,&volume)<0) return -errno;
+                    memcpy((void *)dest,&volume,sizeof(volume)); return 0;
+                }
+                request.args[0]=res->handle;
+            }
+            int64_t rc=exchange(s->broker,&request,&response);
+            if(rc<0) return rc;
+            if(rc || response.size!=sizeof(volume)) return -EPROTO;
+            memcpy((void *)dest,response.data,sizeof(volume)); return 0;
+        }
         case 80: case 79: {
             output = (uintptr_t)args[operation == 80 ? 1 : 2];
             output_size = sizeof(struct sucrune_arm64_stat);
@@ -1998,7 +2078,7 @@ retry_stream_data:
                 }
                 request.args[0] = resource->handle;
             } else {
-                request.args[1] = (int64_t)args[3]; error = path_arg(s, &request, (uintptr_t)args[1]);
+                request.args[1] = (int64_t)args[3]; error = proc_at_path_arg(s,&request,args[0],(uintptr_t)args[1]);
                 const char *device = error == 0 && s->linux_mode ? sucrune_device_path(request.data) : NULL;
                 if (device != NULL) {
                     if ((args[3] & ~(uint64_t)(AT_NO_AUTOMOUNT | AT_SYMLINK_NOFOLLOW)) != 0U) return -EINVAL;
@@ -2094,7 +2174,15 @@ retry_stream_data:
                 query[2] = ((uint64_t)flags & ~(uint64_t)O_NONBLOCK) | (value != 0 ? O_NONBLOCK : 0);
                 return descriptor_fcntl(s, query);
             }
-            if (ioctl(resource->handle, (unsigned int)args[1], &value) != 0) return -errno;
+            if (args[1] == FIONREAD && sucrune_guest_network_echo_domain(&s->network, resource->handle)) {
+                /* Query the next packet only. Its private source-address header
+                 * is absent from the guest ICMP datagram. */
+                unsigned char byte;
+                ssize_t framed = recv(resource->handle, &byte, 1, MSG_PEEK | MSG_TRUNC | MSG_DONTWAIT);
+                if (framed < 0 && errno != EAGAIN) return -errno;
+                if (framed > 0 && framed < (ssize_t)SUCRUNE_NET_ECHO_SOURCE_BYTES) return -EPROTO;
+                value = framed <= 0 ? 0 : (int)(framed - SUCRUNE_NET_ECHO_SOURCE_BYTES);
+            } else if (ioctl(resource->handle, (unsigned int)args[1], &value) != 0) return -errno;
             if (args[1] == FIONREAD) copy_bytes((void *)(uintptr_t)args[2], (unsigned char *)&value, sizeof(value));
             return 0;
         }
@@ -2135,6 +2223,25 @@ retry_stream_data:
             copy_bytes((void *)(uintptr_t)args[0], (unsigned char *)&name, sizeof(name));
             return 0;
         }
+        case 179: {
+            struct sysinfo data={0};
+            _Static_assert(sizeof(data)==112,"Linux arm64 sysinfo ABI");
+            if(!s->linux_mode) return -ENOSYS;
+            if(!guest_memory(s,(uintptr_t)args[0],sizeof(data),true)) return -EFAULT;
+            if(sysinfo(&data)<0) return -errno;
+            memcpy((void *)(uintptr_t)args[0],&data,sizeof(data)); return 0;
+        }
+        case 123: {
+            if(!s->linux_mode) return -ENOSYS;
+            int64_t tid=current_signals(s)->tid;
+            if((int32_t)args[0]!=0 && (int32_t)args[0]!=tid && (int32_t)args[0]!=getpid()) return -ESRCH;
+            cpu_set_t mask;
+            size_t length=args[1]>sizeof(mask) ? sizeof(mask) : (size_t)args[1];
+            long rc=syscall(SYS_sched_getaffinity,(pid_t)args[0],length,&mask);
+            if(rc<0) return -errno;
+            if(!guest_memory(s,(uintptr_t)args[2],(size_t)rc,true)) return -EFAULT;
+            memcpy((void *)(uintptr_t)args[2],&mask,(size_t)rc); return rc;
+        }
         case 120: case 121: { /* Query only the calling guest's real host thread. */
             if (!s->linux_mode) return -ENOSYS;
             int64_t tid = current_signals(s)->tid;
@@ -2169,7 +2276,10 @@ retry_stream_data:
         case 134: {
             if (!s->linux_mode) return -ENOSYS;
             struct sucrune_signal_memory memory = signal_memory(s);
-            return sucrune_signals_action(&s->signal_process, &memory, args[0], (uintptr_t)args[1], (uintptr_t)args[2], args[3]);
+            int rc=sucrune_signals_action(&s->signal_process,&memory,args[0],(uintptr_t)args[1],(uintptr_t)args[2],args[3]);
+            if(rc==0 && args[1] && s->inherited && s->inherited->scope.lease>=0)
+                sucrune_scope_disposition((unsigned int)args[0],s->signal_process.actions[args[0]].handler,current_signals(s)->mask);
+            return rc;
         }
         case 129: case 130: case 131:
             if (!s->linux_mode) return -ENOSYS;
@@ -2183,7 +2293,12 @@ retry_stream_data:
         case 135: { /* Private guest mask; never block the host SIGSYS path. */
             if (s->linux_mode) {
                 struct sucrune_signal_memory memory = signal_memory(s);
-                return sucrune_signals_mask(current_signals(s), &memory, args[0], (uintptr_t)args[1], (uintptr_t)args[2], args[3]);
+                int rc=sucrune_signals_mask(current_signals(s), &memory, args[0], (uintptr_t)args[1], (uintptr_t)args[2], args[3]);
+                if(rc==0 && args[1] && s->inherited && s->inherited->scope.lease>=0) {
+                    const unsigned int sigs[]={SIGHUP,SIGINT,SIGTERM};
+                    for(size_t i=0;i<3;i++) sucrune_scope_disposition(sigs[i],s->signal_process.actions[sigs[i]].handler,current_signals(s)->mask);
+                }
+                return rc;
             }
             if (args[3] != sizeof(uint64_t) || args[0] > 2U) return -EINVAL;
             if ((args[1] != 0U && !guest_memory(s, (uintptr_t)args[1], 8U, false)) ||
@@ -2197,6 +2312,23 @@ retry_stream_data:
                 else s->guest_signal_mask = mask;
                 s->guest_signal_mask &= ~((UINT64_C(1) << (SIGKILL - 1)) | (UINT64_C(1) << (SIGSTOP - 1)));
             }
+            return 0;
+        }
+        case 153: { /* times(2), clock ticks from this guest runner's kernel accounting. */
+            if (!s->linux_mode) return -ENOSYS;
+            struct tms ticks;
+            if (args[0] && !guest_memory(s, args[0], sizeof(ticks), true)) return -EFAULT;
+            long elapsed = syscall(SYS_times, args[0] ? &ticks : NULL);
+            if (elapsed < 0) return -errno;
+            if (args[0]) memcpy((void *)(uintptr_t)args[0], &ticks, sizeof(ticks));
+            return elapsed;
+        }
+        case 165: { /* getrusage(2) */
+            if (!s->linux_mode) return -ENOSYS;
+            struct rusage usage;
+            if (!guest_memory(s, args[1], sizeof(usage), true)) return -EFAULT;
+            if (syscall(SYS_getrusage, (int)args[0], &usage) < 0) return -errno;
+            memcpy((void *)(uintptr_t)args[1], &usage, sizeof(usage));
             return 0;
         }
         case 169: {
@@ -2287,7 +2419,7 @@ retry_stream_data:
             request.args[0] = (int64_t)output_size;
             break;
         case 56: { // openat: reserve guest capacity before the broker performs file side effects.
-            error = path_arg(s, &request, (uintptr_t)args[1]);
+            error = proc_at_path_arg(s,&request,args[0],(uintptr_t)args[1]);
             if (error != 0) return -error;
             int available = sucrune_fds_available(&s->descriptors);
             if (available < 0) return available;
@@ -2297,9 +2429,10 @@ retry_stream_data:
                 int rc = ll_special_open(s, id, args[2], 0);
                 return rc < 0 ? rc : open_guest_device(s, device, args[2]);
             }
-            if (s->linux_mode && sucrune_proc_path((const char *)request.data)) {
+            int net_file = s->linux_mode ? sucrune_proc_net_file((const char *)request.data) : 0;
+            if (s->linux_mode && !net_file && sucrune_proc_path((const char *)request.data)) {
                 int handle;
-                int rc=sucrune_proc_open(&s->proc,s->processes,(const char *)request.data,args[2],&handle);
+                int rc=sucrune_proc_open(&s->proc,s->processes,s->broker,(const char *)request.data,args[2],&handle);
                 if(rc<0) return rc;
                 struct sucrune_arm64_stat st;
                 rc = sucrune_proc_stat(&s->proc, handle, &st);
@@ -2324,12 +2457,23 @@ retry_stream_data:
                 }
                 return -ENOENT;
             }
-            error = directory_handle(s, args[0], request.data, &request.args[0]);
-            if (error != 0) return -error;
-            request.args[1] = (int64_t)(args[2] & ~(uint64_t)O_CLOEXEC);
-            if (s->linux_mode && (args[2] & O_CREAT) != 0U) {
-                request.args[2] = (int64_t)(args[3] & 0777U);
-                request.args[3] = 1;
+            if (net_file) {
+                int rc = sucrune_proc_net_open_flags(args[2]);
+                if (rc == 0) rc = ll_special_open(s, SUCRUNE_LL_OTHER_SPECIAL, args[2], 0);
+                if (rc < 0) return rc;
+                request.operation = SUCRUNE_BROKER_PROC_NET_OPEN;
+                request.size = 0;
+                request.args[0] = net_file;
+                request.args[1] = (int64_t)(args[2] & O_CLOEXEC);
+                request.args[2] = s->owner.guest_uid;
+            } else {
+                error = directory_handle(s, args[0], request.data, &request.args[0]);
+                if (error != 0) return -error;
+                request.args[1] = (int64_t)(args[2] & ~(uint64_t)O_CLOEXEC);
+                if (s->linux_mode && (args[2] & O_CREAT) != 0U) {
+                    request.args[2] = (int64_t)(args[3] & 0777U);
+                    request.args[3] = 1;
+                }
             }
             int read_fd;
             int64_t opened = open_project_file(s, &request, &response, &read_fd);
@@ -2398,6 +2542,14 @@ retry_stream_data:
             }
             break;
         case 49: error = path_arg(s, &request, (uintptr_t)args[0]); break;
+        case 50: {
+            if (!s->linux_mode) return -ENOSYS;
+            struct sucrune_fd_resource *dir = sucrune_fds_get(&s->descriptors, args[0]);
+            if (dir == NULL) return -EBADF;
+            if (dir->kind != SUCRUNE_FD_BROKER) return -ENOTDIR;
+            request.args[0] = dir->handle;
+            break;
+        }
         case 46: case 47: { // ftruncate/fallocate on the broker-owned open file description
             if (!s->linux_mode) return -ENOSYS;
             struct sucrune_fd_resource *r = sucrune_fds_get(&s->descriptors, args[0]);
@@ -2514,7 +2666,7 @@ retry_stream_data:
             const uint64_t allowed = AT_EACCESS | AT_SYMLINK_NOFOLLOW | AT_EMPTY_PATH;
             uint64_t flags = operation == 439 ? args[3] : 0U;
             if ((args[2] & ~UINT64_C(7)) != 0U || (flags & ~allowed) != 0U) return -EINVAL;
-            error = path_arg(s, &request, (uintptr_t)args[1]);
+            error = proc_at_path_arg(s,&request,args[0],(uintptr_t)args[1]);
             if (error != 0) return -error;
             const char *path = (const char *)request.data;
             const char *device = sucrune_device_path(request.data);
@@ -3029,6 +3181,11 @@ static int replace_guest(struct shell_state *s) {
         problem(s, "exec_descriptors", "Cannot commit executable descriptor state.", -committed); return -1;
     }
     s->current_program = target;
+    if(s->inherited && s->inherited->scope.lease>=0) {
+        sucrune_scope_name(target->path);
+        const unsigned int sigs[]={SIGHUP,SIGINT,SIGTERM};
+        for(size_t i=0;i<3;i++) sucrune_scope_disposition(sigs[i],s->signal_process.actions[sigs[i]].handler,current_signals(s)->mask);
+    }
     s->exec_pending = 0;
     s->exec_count++;
     return 0;
@@ -3080,6 +3237,10 @@ static void *execute(void *argument) {
         s->signal_thread.mask=s->inherited->signal_mask&permitted;
         for (unsigned int sig=1;sig<=64;sig++) if ((s->inherited->ignored_signals&permitted)&(UINT64_C(1)<<(sig-1U)))
             s->signal_process.actions[sig].handler=1U;
+        if(s->inherited->scope.lease>=0) {
+            const unsigned int sigs[]={SIGHUP,SIGINT,SIGTERM};
+            for(size_t i=0;i<3;i++) sucrune_scope_disposition(sigs[i],s->signal_process.actions[sigs[i]].handler,s->signal_thread.mask);
+        }
     }
     atomic_store_explicit(&sucrune_active_signal_gate, &s->gate, memory_order_release);
     if ((s->linux_mode ? linux_filter(s) : filter(&s->image)) != 0) { problem(s, "seccomp", "Cannot install guest filter.", errno); return NULL; }
@@ -3143,6 +3304,7 @@ static int run_guest(int broker, const struct sucrune_program *program_spec, siz
     } else sucrune_fds_init(&s.descriptors, input, output, error_output, O_RDONLY, O_WRONLY, release_descriptor, &s);
     s.descriptors.descriptor_closed=record_descriptor_closed;
     s.may_have_record_locks=s.inherited!=NULL;
+    struct sucrune_scope scope=s.inherited ? s.inherited->scope : (struct sucrune_scope){-1,-1};
     bool locked = false;
     if (s.linux_mode) {
         struct ucred peer;
@@ -3194,6 +3356,10 @@ static int run_guest(int broker, const struct sucrune_program *program_spec, siz
         string_bytes += strlen(value) + 1U;
     }
     if (s.linux_mode && s.inherited==NULL) for (size_t i = 0; i < envc; i++) {
+        if (!strcmp(envp[i],"SUCRUNE_PROCESS_SCOPE=project") && scope.bus<0) {
+            scope.bus=sucrune_scope_start();
+            if(scope.bus<0) {problem(&s,"project_scope","Cannot create project process scope.",-scope.bus);goto finish;}
+        }
         if (strcmp(envp[i], "SUCRUNE_FD_PROFILE=build") == 0) s.build_profile = true;
         if (strcmp(envp[i], "SUCRUNE_TRACE_SYSCALLS=1") == 0) s.trace_syscalls = true;
         if (strcmp(envp[i], "SUCRUNE_TRACE_FAULTS=1") == 0 && sucrune_linux_is_runner()) s.trace_faults = true;
@@ -3254,7 +3420,11 @@ static int run_guest(int broker, const struct sucrune_program *program_spec, siz
         int error = sucrune_linux_is_runner() ? sucrune_threads_create(&callbacks, &s, &s.threads) : -ENOTSUP;
         if (error != 0) problem(&s, "thread_supervisor", "Cannot start the Linux thread supervisor.", -error);
         else {
-            error = sucrune_processes_create(&s.processes);
+            if(scope.bus>=0 && argc && argv[0]) {
+                const char *name=strrchr(argv[0],'/');
+                (void)prctl(PR_SET_NAME,(unsigned long)(name?name+1:argv[0]),0UL,0UL,0UL);
+            }
+            error = sucrune_processes_create(&s.processes,scope);
             if (error != 0) problem(&s, "process_supervisor", "Cannot start the Linux process supervisor.", -error);
         }
     }
@@ -3272,6 +3442,11 @@ static int run_guest(int broker, const struct sucrune_program *program_spec, siz
         int destroyed = sucrune_threads_destroy(s.threads); s.threads = NULL;
         if (error != 0 || destroyed != 0) problem(&s, "thread_cleanup", "Cannot finish guest thread cleanup.", error != 0 ? -error : -destroyed);
     }
+    /* The Android wrapper adopts descendants and each has a project lease.
+     * This is a dedicated ELF process; _exit disposes its observer threads.
+     * Never destroy their mutexes or unmap the guest stack underneath them. */
+    if(s.inherited && scope.bus>=0 && s.exited && s.error==0)
+        sucrune_exec_child_exit(s.exit_code,s.termination_signal);
     if (s.processes != NULL) {
         int error = sucrune_processes_destroy(s.processes, &s.process_stats);
         s.processes = NULL;

@@ -3,13 +3,15 @@
 #include "network_broker.h"
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 /* One canonical local descriptor and a manager token per open description.
  * The guest FD table owns aliases separately. All calls are serialized by the
  * caller's state lock, including every complete file/network transaction. */
 #define SUCRUNE_UDP_BOUND 1
 #define SUCRUNE_UDP_CONNECTED 2
-struct sucrune_guest_network_entry { int fd, type, udp_state; int64_t token; };
+struct sucrune_guest_network_entry { int fd, type, udp_state, echo_domain; int64_t token; };
 struct sucrune_guest_network {
     int broker;
     unsigned int count, peak;
@@ -30,6 +32,11 @@ int sucrune_guest_network_udp_state(const struct sucrune_guest_network *network,
  * Caller must preflight guest capacity and publish a guest descriptor; if
  * publication fails, release the returned canonical FD through this module. */
 int sucrune_guest_network_socket(struct sucrune_guest_network *network, int domain, int type, int protocol);
+int sucrune_guest_network_echo_domain(const struct sucrune_guest_network *network, int fd);
+/* For echo only. The caller holds its state lock through both staging and the
+ * send RPC. Receives use one private payload iovec and room for 28 address bytes. */
+ssize_t sucrune_guest_network_echo_message(struct sucrune_guest_network *network, int fd,
+    int receiving, struct msghdr *message, int flags);
 int sucrune_guest_network_accept(struct sucrune_guest_network *network, int fd, int flags,
     void *address, size_t capacity, size_t *length);
 /* Last guest alias owns release. This consumes the canonical FD even when

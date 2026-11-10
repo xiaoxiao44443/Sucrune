@@ -12,7 +12,7 @@
 #include <unistd.h>
 
 #define MARKER_PREFIX "sucrune:inode:v1:"
-/* Bounds apply to recovery only. A clean store never requires a workspace walk. */
+/* Bound walks for crash recovery and confined hard-link ownership checks. */
 #define LIMIT_ENTRIES 1000000U
 #define LIMIT_DEPTH 128U
 #define LIMIT_DIRTY 128U
@@ -22,6 +22,8 @@ struct census {
     size_t count;
     unsigned seen;
     dev_t device;
+    ino_t native_inode;
+    uint64_t required;
 };
 static int valid_id(const char *s) {
     return strlen(s) == 32U && strspn(s, "0123456789abcdef") == 32U;
@@ -50,6 +52,7 @@ static int scan_workspace(struct census *c,int fd,unsigned depth) {
     if (!d) return -errno;
     int rc=0;
     for (;;) {
+        if (c->required && c->ids[0].names == c->required) break;
         errno=0;
         struct dirent *entry=readdir(d);
         if (!entry) { if(errno!=0) rc=-errno; break; }
@@ -70,7 +73,12 @@ static int scan_workspace(struct census *c,int fd,unsigned depth) {
             else rc=scan_workspace(c,child,depth+1U);
             (void)close(child);
             if (rc<0) break;
-        } else if (type==DT_LNK) {
+        } else if (c->native_inode && type==DT_REG) {
+            if (entry->d_ino && entry->d_ino!=c->native_inode) continue;
+            struct stat st;
+            if (fstatat(fd,entry->d_name,&st,AT_SYMLINK_NOFOLLOW)!=0) { rc=-errno; break; }
+            if (st.st_dev==c->device && st.st_ino==c->native_inode) c->ids[0].names++;
+        } else if (!c->native_inode && type==DT_LNK) {
             char id[33];
             rc=marker_at(fd,entry->d_name,id);
             if (rc<0) break;
@@ -81,8 +89,19 @@ static int scan_workspace(struct census *c,int fd,unsigned depth) {
         }
     }
     /* Reach durability for even an unlink that crashed before fsync(parent). */
-    if (rc==0 && fsync(fd)!=0) rc=-errno;
+    if (!c->required && rc==0 && fsync(fd)!=0) rc=-errno;
     (void)closedir(d); return rc;
+}
+int sucrune_links_all_in_tmp(int root,const struct stat *file,const char *marker,uint64_t names) {
+    if (!names || names>LIMIT_ENTRIES || !file->st_ino) return -EACCES;
+    int dir=openat(root,"tmp",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+    if (dir<0) return -EACCES;
+    struct census c={.count=1,.device=file->st_dev,.required=names};
+    if (marker) memcpy(c.ids[0].id,marker,sizeof(c.ids[0].id));
+    else c.native_inode=file->st_ino;
+    int rc=scan_workspace(&c,dir,0);
+    close(dir);
+    return rc<0 ? rc : c.ids[0].names==names ? 0 : -EACCES;
 }
 /* Verify all named objects before performing any repair. Never follow metadata symlinks. */
 static int validate_body(int store,const struct dirty_id *e) {

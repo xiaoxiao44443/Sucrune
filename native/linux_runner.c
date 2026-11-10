@@ -240,10 +240,21 @@ static int reap_adopted(struct child_cleanup *children) {
         (void)poll(NULL,0,5);
     }
 }
-static int stop_or_report(int report_socket,int stop) {
+static int stop_or_report(int report_socket,int stop,pid_t runner,int project_scope) {
     struct pollfd fds[2]={{report_socket,POLLIN,0},{stop,POLLIN,0}};
     int ready;
-    do { ready=poll(fds,2,-1); } while(ready<0 && errno==EINTR);
+    for(;;) {
+        ready=poll(fds,2,project_scope?1000:-1);
+        if(ready<0 && errno==EINTR) continue;
+        if(ready!=0) break;
+        /* Only this isolated wrapper reaps orphans. Preserve the main runner
+         * status and never race wait4 in any still-living guest shell. */
+        for(;;) {
+            siginfo_t child={0};
+            if(waitid(P_ALL,0,&child,WEXITED|WNOHANG|WNOWAIT)!=0 || child.si_pid<=0 || child.si_pid==runner) break;
+            (void)waitpid(child.si_pid,NULL,WNOHANG);
+        }
+    }
     if(ready<0) return errno;
     if((fds[1].revents&POLLNVAL)!=0) return EBADF;
     return fds[1].revents!=0 ? ECANCELED : 0;
@@ -331,7 +342,9 @@ int sucrune_linux_spawn(int broker,const char *path,size_t argc,const char *cons
         stage=ST_PROTOCOL;error=errno==0 ? EIO : errno;(void)kill(child,SIGKILL);goto reap;
     }
     unsigned char response[sizeof(struct runner_reply)+SUCRUNE_RUNNER_REPORT_LIMIT];
-    error=stop_or_report(sockets[0],stop);
+    int scoped=0;
+    for(size_t i=0;i<envc;i++) if(!strcmp(envp[i],"SUCRUNE_PROCESS_SCOPE=project")) scoped=1;
+    error=stop_or_report(sockets[0],stop,child,scoped);
     if(error!=0) {
         children.stopped=error==ECANCELED;
         stage=children.stopped ? ST_STOP : ST_WAIT;
@@ -412,7 +425,7 @@ static int runner_decimal(const char *text,int minimum) {
 static int child_guest_exec(const char *channel,const char *parent) {
     int fd=runner_decimal(channel,3);
     int expected=runner_decimal(parent,1);
-    if (fd<0 || expected<0 || prctl(PR_SET_PDEATHSIG,SIGKILL,0UL,0UL,0UL)!=0 || getppid()!=expected) return 126;
+    if (fd<0 || expected<0) return 126;
     sigset_t empty; sigemptyset(&empty);
     if (sigprocmask(SIG_SETMASK,&empty,NULL)!=0) return 126;
     struct sucrune_guest_exec *packet=malloc(sizeof(*packet));
@@ -421,6 +434,10 @@ static int child_guest_exec(const char *channel,const char *parent) {
     const char *path=NULL,*argv[SUCRUNE_GUEST_EXEC_ARGS],*envp[SUCRUNE_GUEST_EXEC_ENV];
     if (n<0 || (size_t)n>sizeof(*packet) ||
         sucrune_exec_check_packet(packet,(size_t)n,fd,&path,argv,envp)!=0) return 126;
+    if (packet->scope.bus<0) {
+        if (prctl(PR_SET_PDEATHSIG,SIGKILL,0UL,0UL,0UL)!=0 || getppid()!=expected) return 126;
+    } else if (fcntl(packet->scope.bus,F_SETFD,FD_CLOEXEC)<0 || fcntl(packet->scope.lease,F_SETFD,FD_CLOEXEC)<0 ||
+               sucrune_scope_watch(packet->scope.lease)<0) return 126;
     (void)close(fd);
     if (fcntl(packet->broker,F_SETFD,FD_CLOEXEC)<0 || fcntl(packet->image_fd,F_SETFD,FD_CLOEXEC)<0 ||
         (packet->interp_fd>=0 && fcntl(packet->interp_fd,F_SETFD,FD_CLOEXEC)<0)) return 126;

@@ -105,7 +105,10 @@ class RuntimeClient private constructor(private val context: Context) {
     /** Stops every execution owned by this project before deleting its files.
      * Returns after worker, streams, broker and execution metadata are settled.
      * If cleanup fails or takes too long, files are retained and deletion may be retried. */
-    fun deleteProject(id: String): JSONObject {
+    fun deleteProject(id: String): JSONObject = deleteProject(id, false)
+
+    /** Diagnostic projects may discard their execution transcripts after all workers have stopped. */
+    fun deleteProject(id: String, purgeExecutionHistory: Boolean): JSONObject {
         check(Looper.myLooper() != Looper.getMainLooper()) { "deleteProject cannot block the main looper" }
         val active = synchronized(sessionsLock) {
             requireProjectOpen(id)
@@ -121,7 +124,9 @@ class RuntimeClient private constructor(private val context: Context) {
                     throw RuntimeExceptionWithCode("cleanup_pending", "Project cleanup is still pending; retry deletion")
                 }
             }
-            return core("env.delete", JSONObject().put("env_id", id)) as JSONObject
+            val request = JSONObject().put("env_id", id)
+            if (purgeExecutionHistory) request.put("purge_execution_history", true)
+            return core("env.delete", request) as JSONObject
         } finally {
             synchronized(sessionsLock) { deletingProjects.remove(id) }
         }
@@ -338,7 +343,12 @@ class RuntimeClient private constructor(private val context: Context) {
         val writeScope = writeScope(kind, env)
         val slot = executionSlot(envId, path, argv, env, cwd, resident, writeScope)
         val networkPolicy = networkPolicy(kind, env)
-        val networkHandle = if (networkPolicy == 2) {
+        val routes = env.filter { it.startsWith("SUCRUNE_NETWORK_ROUTE=") }
+        require(routes.isEmpty() || (networkPolicy == 2 && routes.singleOrNull() == "SUCRUNE_NETWORK_ROUTE=system")) {
+            "The system network route requires outbound Linux networking and must appear once"
+        }
+        val followDefaultNetwork = routes.isNotEmpty()
+        val networkHandle = if (networkPolicy == 2 && !followDefaultNetwork) {
             context.getSystemService(ConnectivityManager::class.java).activeNetwork?.networkHandle
                 ?: throw RuntimeExceptionWithCode("network_unavailable", "No active Android network is available")
         } else 0L
@@ -349,7 +359,7 @@ class RuntimeClient private constructor(private val context: Context) {
             if (secrets != null) request.put("secret_env_names", JSONArray(secrets.names))
             if (kind == "linux") request.put("network_policy", when (networkPolicy) { 1 -> "loopback"; 2 -> "outbound"; else -> "none" })
             if (fdProfile.singleOrNull() == "build") request.put("fd_profile", "build")
-            if (networkPolicy == 2) request.put("network_binding", "active_network_snapshot")
+            if (networkPolicy == 2) request.put("network_binding", if (followDefaultNetwork) "system_default" else "active_network_snapshot")
             if (kind == "shell") request.put("script", script)
             else {
                 if (kind == "program") request.put("program_id", programId)

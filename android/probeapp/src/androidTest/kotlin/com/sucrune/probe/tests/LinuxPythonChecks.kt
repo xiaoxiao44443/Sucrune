@@ -35,6 +35,57 @@ internal fun linuxPythonCases(client: RuntimeClient, project: String, execute: T
             check(python(listOf("-c", source), listOf("SUCRUNE_NETWORK_POLICY=loopback")).trim() == "tcp-flags-ok")
             "Python configured TCP nonblocking mode through an alias and connected to a guest loopback listener."
         },
+        "linux_python_resources" to {
+            val source = """
+                import errno, os, pathlib, time
+                volume = os.statvfs('/workspace')
+                assert volume.f_blocks > 0 and volume.f_frsize > 0 and 0 <= volume.f_bavail <= volume.f_blocks
+                fd = os.open('/workspace', os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    assert os.fstatvfs(fd).f_blocks == volume.f_blocks
+                finally:
+                    os.close(fd)
+                assert '/ sucrunefs ' in pathlib.Path('/proc/mounts').read_text()
+                assert pathlib.Path('/etc/mtab').read_text() == pathlib.Path('/proc/self/mounts').read_text()
+                assert int(pathlib.Path('/proc/meminfo').read_text().split('MemTotal:')[1].split()[0]) > 0
+                uptime, idle = map(float, pathlib.Path('/proc/uptime').read_text().split())
+                assert abs(uptime - time.clock_gettime(time.CLOCK_BOOTTIME)) < 5 and idle >= 0
+                assert os.sched_getaffinity(0) == os.sched_getaffinity(os.getpid())
+                assert len(os.sched_getaffinity(0)) >= 1
+                print('resources-ok')
+            """.trimIndent()
+            check(python(listOf("-c", source)).trim() == "resources-ok")
+            "Project paths and handles reported the same volume; proc aggregates and CPU affinity were readable."
+        },
+        "linux_python_blocking_accept" to {
+            val source = """
+                import errno, fcntl, os, socket, threading, time
+                with socket.socket() as server:
+                    server.bind(('127.0.0.1', 0))
+                    server.listen(1)
+                    def connect():
+                        time.sleep(0.1)
+                        with socket.create_connection(server.getsockname()) as c:
+                            c.sendall(b'ok')
+                    client = threading.Thread(target=connect)
+                    client.start()
+                    peer, addr = server.accept()
+                    with peer:
+                        assert not (fcntl.fcntl(peer, fcntl.F_GETFL) & os.O_NONBLOCK)
+                        assert addr[0] == '127.0.0.1' and peer.recv(2) == b'ok'
+                    client.join()
+                    server.setblocking(False)
+                    try:
+                        server.accept()
+                    except BlockingIOError as e:
+                        assert e.errno == errno.EAGAIN
+                    else:
+                        raise AssertionError('empty nonblocking listener accepted a connection')
+                print('blocking-accept-ok')
+            """.trimIndent()
+            check(python(listOf("-c", source), listOf("SUCRUNE_NETWORK_POLICY=loopback")).trim() == "blocking-accept-ok")
+            "Blocking accept waited for another guest thread and returned a guest-blocking stream."
+        },
         "linux_python_script_and_stdlib" to {
             val source = """
                 import bz2, gzip, hashlib, json, lzma, os, pathlib, sqlite3, ssl, sys, sysconfig

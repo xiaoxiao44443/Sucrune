@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 )
@@ -67,6 +68,13 @@ func openInodeFile(store, name string, metadataOnly, writable bool) (*os.File, e
 		(strings.HasSuffix(name, ".refs") && (st.Mode&0077 != 0 || st.Size != 4)) {
 		syscall.Close(fd)
 		return nil, badInode()
+	}
+	if _, shared := sharedToolKey(sharedToolPrefix + name); shared {
+		mode, err := strconv.ParseUint(name[:4], 8, 16)
+		if err != nil || uint64(st.Mode&07777) != mode || writable {
+			syscall.Close(fd)
+			return nil, badInode()
+		}
 	}
 	return os.NewFile(uintptr(fd), name), nil
 }

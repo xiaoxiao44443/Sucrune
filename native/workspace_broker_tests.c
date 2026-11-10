@@ -23,6 +23,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/time.h>
+#include <sys/vfs.h>
 #include <unistd.h>
 
 #define CHECK(condition) do { if (!(condition)) { \
@@ -150,6 +151,35 @@ static int64_t open_read(struct client c, const char *name, int flags, int *righ
     struct sucrune_response response;
     CHECK(sucrune_broker_exchange(c.socket, &r, &response, right, 1000) == 0);
     return response.result;
+}
+
+static void guest_volume_and_counters(const char *workspace) {
+    struct client c={0};
+    c.socket=sucrune_workspace_broker_profile(workspace,&c.done,0,0,SUCRUNE_WORKSPACE_LINUX);
+    CHECK(c.socket>=0);
+    struct sucrune_request q=request(43); q.args[0]=AT_FDCWD; append_path(&q,"/");
+    struct sucrune_response a=exchange(c,&q);
+    struct statfs v,actual;
+    CHECK(a.result==0 && a.size==sizeof(v)); memcpy(&v,a.data,sizeof(v));
+    CHECK(statfs(workspace,&actual)==0 && actual.f_blocks==v.f_blocks && actual.f_bsize==v.f_bsize);
+    CHECK(v.f_blocks>0 && v.f_bavail<=v.f_blocks);
+    int64_t fd=path_operation(c,56,"/",O_DIRECTORY|O_RDONLY);
+    CHECK(fd>=3 && file_operation(c,44,fd,0,0).size==sizeof(v));
+    CHECK(file_operation(c,44,-1,0,0).result==-EBADF);
+    CHECK(path_operation(c,43,"missing-statfs-probe",0)==-ENOENT);
+    CHECK(file_operation(c,57,fd,0,0).result==0);
+    q=request(SUCRUNE_BROKER_PROC_CONTENTS); q.args[0]=SUCRUNE_SYS_MOUNTS;
+    a=exchange(c,&q);
+    CHECK(a.result==0 && a.size<sizeof(a.data)); a.data[a.size]=0;
+    CHECK(strstr((char *)a.data,"sucrune / sucrunefs") && !strstr((char *)a.data,workspace));
+    q.args[0]=SUCRUNE_SYS_MEMINFO; a=exchange(c,&q);
+    CHECK(a.result==0 && a.size>=9 && !memcmp(a.data,"MemTotal:",9));
+    q.args[0]=SUCRUNE_SYS_UPTIME; a=exchange(c,&q);
+    CHECK(a.result==0 && a.size>3 && a.size<sizeof(a.data)); a.data[a.size]=0;
+    double uptime,idle; CHECK(sscanf((char *)a.data,"%lf %lf",&uptime,&idle)==2 && uptime>=0 && idle>=0);
+    q.args[0]=999; CHECK(exchange(c,&q).result==-EINVAL);
+    disconnect_broker(&c);
+    puts("PASS guest mount table, disk capacity, memory and uptime counters");
 }
 
 static void optional_read_right(const char *workspace) {
@@ -421,7 +451,7 @@ static unsigned int remove_directory_contents(struct client client,int64_t paren
 
 static void relative_directory_operations(const char *workspace,const char *outside) {
     struct client client=connect_broker(workspace);
-    const int directory_flags=O_RDONLY|O_NONBLOCK|O_NOFOLLOW|O_DIRECTORY|O_CLOEXEC;
+    const int directory_flags=O_RDONLY|O_NONBLOCK|O_NOCTTY|O_NOFOLLOW|O_DIRECTORY|O_CLOEXEC;
     CHECK(path_operation(client,34U,"at-tree",0)==0);
     CHECK(path_operation(client,34U,"at-tree/branch",0)==0);
     CHECK(path_operation(client,34U,"at-tree/branch/deep",0)==0);
@@ -448,6 +478,11 @@ static void relative_directory_operations(const char *workspace,const char *outs
     CHECK(query(client,79U,branch,"deep/item/",0,0).result==-ENOTDIR);
     CHECK(query(client,56U,branch,"deep/item/../item",O_RDONLY,0).result==-ENOTDIR);
     CHECK(query(client,35U,rootfd,"..",AT_REMOVEDIR,0).result==-EPERM);
+    CHECK(file_operation(client,50U,rootfd,0,0).result==0);
+    check_cwd(client,"/at-moved");
+    CHECK(file_operation(client,50U,file,0,0).result==-ENOTDIR);
+    CHECK(file_operation(client,50U,-100,0,0).result==-EBADF);
+    check_cwd(client,"/at-moved");
     CHECK(path_operation(client,49U,"/at-moved/branch/deep",0)==0);
     CHECK(query(client,35U,branch,"deep",AT_REMOVEDIR,0).result==-EBUSY);
     check_cwd(client,"/at-moved/branch/deep");
@@ -1569,6 +1604,9 @@ static void scoped_writes(const char *root) {
     joined_path(real, sizeof(real), root, "workspace-else/sentinel");
     joined_path(alias, sizeof(alias), root, "workspace/hard");
     CHECK(link(real, alias) == 0);
+    char temp_hard[2048];
+    joined_path(temp_hard, sizeof(temp_hard), root, "tmp/foreign");
+    CHECK(link(real, temp_hard) == 0);
     for (int scope = SUCRUNE_WRITE_READ_ONLY; scope <= SUCRUNE_WRITE_PROJECT; scope++) {
         struct client c;
         c.socket = sucrune_workspace_broker_scoped(root, &c.done, 0, 0, SUCRUNE_WORKSPACE_LINUX, (enum sucrune_write_scope)scope);
@@ -1585,6 +1623,11 @@ static void scoped_writes(const char *root) {
             CHECK(path_operation(c, 35, "/workspace/Desktop/nested", AT_REMOVEDIR) == 0);
             CHECK(path_operation(c, 35, "/workspace/Desktop", AT_REMOVEDIR) == 0);
         } else CHECK(created == -EACCES);
+        int64_t outside = path_operation(c, 56, "/workspace-else", O_PATH|O_NOCTTY|O_DIRECTORY);
+        CHECK(outside>=3 && file_operation(c,50,outside,0,0).result==0);
+        CHECK(path_operation(c,56,"sentinel",O_RDWR|O_TRUNC)==-EACCES);
+        CHECK(file_operation(c,57,outside,0,0).result==0);
+        CHECK(path_operation(c,49,"/workspace",0)==0);
         int64_t readfd = path_operation(c, 56, "/workspace-else/sentinel", O_RDONLY);
         CHECK(readfd >= 3 && file_operation(c, 52, readfd, 0777, 0).result == -EACCES);
         CHECK(path_operation(c, 56, "/workspace-else/sentinel", O_RDWR | O_TRUNC) == -EACCES);
@@ -1601,16 +1644,47 @@ static void scoped_writes(const char *root) {
         int64_t tmp = path_operation(c, 56, "/tmp/temp", O_CREAT | O_WRONLY);
         if (scope == SUCRUNE_WRITE_PROJECT) {
             CHECK(data >= 3 && write_file(child, data, "test") == 4 && tmp >= 3);
+            CHECK(link_paths(c,AT_FDCWD,"/workspace-else/sentinel",AT_FDCWD,"/tmp/bad",0)==-EACCES);
+            CHECK(link_paths(c,AT_FDCWD,"/tmp/foreign",AT_FDCWD,"/tmp/bad",0)==-EACCES);
+            CHECK(link_paths(c,AT_FDCWD,"/tmp/temp",AT_FDCWD,"/workspace-else/bad",0)==-EACCES);
+            CHECK(link_paths(c,readfd,"",AT_FDCWD,"/tmp/bad",AT_EMPTY_PATH)==-EACCES);
+            CHECK(path_operation(c,56,"/tmp/foreign",O_RDWR|O_TRUNC)==-EACCES);
+            CHECK(path_operation(c,34,"/tmp/profile",0)==0);
+            CHECK(link_paths(c,AT_FDCWD,"/tmp/temp",AT_FDCWD,"/tmp/profile/session",0)==0);
+            CHECK(link_paths(c,AT_FDCWD,"/tmp/temp",AT_FDCWD,"/tmp/profile/session",0)==-EEXIST);
+            // Another unrestricted consumer can publish an alias to a protected
+            // directory. The scoped consumer must then reject writes through the temp names.
+            CHECK(link_paths(setup,AT_FDCWD,"/tmp/temp",AT_FDCWD,"/workspace-else/published",0)==0);
+            CHECK(path_operation(c,56,"/tmp/profile/session",O_WRONLY|O_TRUNC)==-EACCES);
+            CHECK(link_paths(c,AT_FDCWD,"/tmp/temp",AT_FDCWD,"/tmp/bad",0)==-EACCES);
+            CHECK(path_operation(setup,35,"/workspace-else/published",0)==0);
+            int64_t linked=path_operation(child,56,"/tmp/profile/session",O_WRONLY|O_APPEND);
+            CHECK(linked>=3 && write_file(child,linked,"hello")==5);
+            CHECK(path_operation(c,35,"/tmp/temp",0)==0);
+            CHECK(write_file(child,linked,"!")==1);
+            CHECK(file_operation(child,57,linked,0,0).result==0);
+            linked=path_operation(c,56,"/tmp/profile/session",O_WRONLY|O_APPEND);
+            CHECK(linked>=3 && write_file(c,linked,"?")==1 && file_operation(c,57,linked,0,0).result==0);
+            linked=path_operation(c,56,"/tmp/profile/session",O_RDONLY);
+            CHECK(linked>=3);
+            struct sucrune_response line=file_operation(c,63,linked,7,0);
+            CHECK(line.result==7 && !memcmp(line.data,"hello!?",7));
+            CHECK(file_operation(c,57,linked,0,0).result==0);
+            CHECK(path_operation(c,35,"/tmp/profile/session",0)==0);
+            CHECK(path_operation(c,35,"/tmp/profile",AT_REMOVEDIR)==0);
             CHECK(rename_path(c, "ok", "/workspace-else/moved") == -EACCES);
             CHECK(rename_path(c, "/workspace-else/sentinel", "replaced") == -EACCES);
-            CHECK(path_operation(c, 35, "ok", 0) == 0 && path_operation(c, 35, "/tmp/temp", 0) == 0);
-        } else CHECK(data == -EACCES && tmp == -EACCES);
+            CHECK(path_operation(c, 35, "ok", 0) == 0);
+        } else {
+            CHECK(data == -EACCES && tmp == -EACCES);
+            CHECK(link_paths(c,AT_FDCWD,"/tmp/foreign",AT_FDCWD,"/tmp/new",0)==-EACCES);
+        }
         close(child.socket);
         disconnect_broker(&c);
     }
     struct sucrune_response bytes = file_operation(setup, SUCRUNE_BROKER_PREAD64, sentinel, 9, 0);
     CHECK(bytes.result == 9 && memcmp(bytes.data, "unchanged", 9) == 0);
-    CHECK(path_operation(setup, 35, "/workspace/link", 0) == 0 && unlink(alias) == 0);
+    CHECK(path_operation(setup, 35, "/workspace/link", 0) == 0 && unlink(alias) == 0 && unlink(temp_hard)==0);
     CHECK(path_operation(setup, 35, "/workspace-else/sentinel", 0) == 0);
     CHECK(path_operation(setup, 35, "/workspace-else", AT_REMOVEDIR) == 0);
     CHECK(path_operation(setup, 35, "/tmp", AT_REMOVEDIR) == 0 && path_operation(setup, 35, "/workspace", AT_REMOVEDIR) == 0);
@@ -1693,6 +1767,8 @@ static void mounted_tree(const char *root,const char *outside) {
     CHECK(reader.socket>=0);
     CHECK(path_operation(reader,34,"/workspace",0)==-EEXIST);
     CHECK(path_operation(reader,34,"/workspace/sentinel",0)==-EEXIST);
+    CHECK(path_operation(reader,43,"/workspace/sentinel",0)==-EOPNOTSUPP);
+    CHECK(path_operation(reader,43,"/workspace/no-volume-file",0)==-ENOENT);
     CHECK(path_operation(reader,34,"/workspace/new-dir",0)==-EACCES);
     int exported=-1;
     CHECK(open_read(reader,"/mounted-alias/sentinel",O_RDONLY,&exported)>=3 && exported>=0);
@@ -1709,6 +1785,8 @@ static void mounted_tree(const char *root,const char *outside) {
     CHECK(path_operation(c,49,"/workspace",0)==0); check_cwd(c,"/workspace");
     int64_t file=path_operation(c,56,"sentinel",O_RDONLY);
     CHECK(file>=3);
+    CHECK(link_paths(c,AT_FDCWD,"sentinel",AT_FDCWD,"/tmp/foreign",0)==-EXDEV);
+    CHECK(file_operation(c,44,file,0,0).result==-EOPNOTSUPP);
     struct sucrune_response got=file_operation(c,63,file,9,0);
     CHECK(got.result==9 && !memcmp(got.data,"untouched",9));
     CHECK(path_operation(c,79,"/workspace/../workspace/sentinel",0)==0);
@@ -1735,6 +1813,10 @@ static void mounted_tree(const char *root,const char *outside) {
     add_path_rule(c,set,"/workspace",LL_READ_DIR|LL_READ_FILE);
     CHECK(ll_wire(c,167,38,1,0,0)==0 && ll_wire(c,446,set,0,0,0)==0);
     CHECK(path_operation(c,34,"/workspace/nested/.",0)==-EEXIST);
+    CHECK(file_operation(c,50,dir,0,0).result==0);
+    check_cwd(c,"/workspace/nested");
+    CHECK(path_operation(c,34,"blocked",0)==-EACCES);
+    CHECK(path_operation(c,49,"/workspace",0)==0);
     CHECK(path_operation(c,34,"/workspace/nested/blocked",0)==-EACCES);
     CHECK(path_operation(c,56,"nested/b",O_WRONLY|O_TRUNC)==-EACCES);
     CHECK(path_operation(c,35,"nested/b",0)==-EACCES);
@@ -1958,6 +2040,91 @@ static void guest_exec_mode_classes(void) {
     }
 }
 
+static void shared_tool_copyup(const char *root) {
+    const char *key = "0700-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    char environments[2048], store[2048], blob[2048], marker[100];
+    joined_path(environments, sizeof(environments), root, "environments");
+    joined_path(store, sizeof(store), root, "shared-tools-v1");
+    joined_path(blob, sizeof(blob), store, key);
+    snprintf(marker, sizeof(marker), "sucrune:base:v1:%s", key);
+    CHECK(mkdir(environments,0700)==0 && mkdir(store,0700)==0);
+    CHECK(chmod(store,0700)==0);
+    int body = open(blob, O_CREAT | O_EXCL | O_RDWR | O_CLOEXEC, 0700);
+    CHECK(body >= 0 && write(body, "package", 7) == 7 && fchmod(body,0700)==0);
+    char env[2][2048], workspace[2][2048], link[2][2048];
+    struct client client[2];
+    for (unsigned i=0; i<2; ++i) {
+        joined_path(env[i],sizeof(env[i]),environments,i?"b":"a");
+        joined_path(workspace[i],sizeof(workspace[i]),env[i],"workspace");
+        joined_path(link[i],sizeof(link[i]),workspace[i],"tool");
+        CHECK(mkdir(env[i],0700)==0 && mkdir(workspace[i],0700)==0);
+        CHECK(symlink(marker,link[i])==0);
+        client[i].socket = sucrune_workspace_broker_profile(workspace[i], &client[i].done, 0, 0, SUCRUNE_WORKSPACE_LINUX);
+        CHECK(client[i].socket >= 0);
+    }
+    int direct = -1;
+    int64_t lower = open_read(client[0],"tool",O_RDONLY,&direct);
+    CHECK(lower>=3 && direct>=0 && (fcntl(direct,F_GETFL) & O_ACCMODE)==O_RDONLY);
+    struct stat direct_stat, blob_stat;
+    CHECK(fstat(direct,&direct_stat)==0 && fstat(body,&blob_stat)==0 && direct_stat.st_ino==blob_stat.st_ino);
+    CHECK(link_paths(client[0],lower,"",AT_FDCWD,"alias",AT_EMPTY_PATH)==-EOPNOTSUPP);
+    CHECK(make_symlink(client[0],AT_FDCWD,marker,"forged")==-EPERM);
+    struct sucrune_request map=request(SUCRUNE_BROKER_MAP_FILE);
+    map.args[0]=lower; map.args[1]=1;
+    struct sucrune_response response;
+    int right=-1;
+    CHECK(sucrune_broker_exchange(client[0].socket,&map,&response,&right,1000)==0);
+    CHECK(response.result==-EACCES && right==-1);
+    struct client restricted;
+    restricted.socket=sucrune_workspace_broker_scoped(workspace[0],&restricted.done,0,0,SUCRUNE_WORKSPACE_LINUX,SUCRUNE_WRITE_PROJECT);
+    CHECK(restricted.socket>=0 && path_operation(restricted,56,"tool",O_RDWR|O_TRUNC)==-EACCES);
+    CHECK(path_operation(restricted,53,"tool",0600)==-EACCES);
+    disconnect_broker(&restricted);
+    struct client ll=landlock_client(workspace[0]);
+    int64_t rules=ll_wire(ll,444,LL_ALL,8,0,0);
+    CHECK(rules>=3 && ll_wire(ll,167,38,1,0,0)==0);
+    add_path_rule(ll,rules,"tool",LL_READ_FILE|LL_EXECUTE);
+    CHECK(ll_wire(ll,446,rules,0,0,0)==0);
+    CHECK(path_operation(ll,SUCRUNE_BROKER_OPEN_EXEC,"tool",O_RDONLY)>=3);
+    CHECK(path_operation(ll,56,"tool",O_WRONLY|O_TRUNC)==-EACCES);
+    disconnect_broker(&ll);
+    struct stat st;
+    CHECK(lstat(link[0],&st)==0 && S_ISLNK(st.st_mode));
+    CHECK(rename_path(client[0],"tool","moved")==0 && rename_path(client[0],"moved","tool")==0);
+    ll=landlock_client(workspace[0]);
+    rules=ll_wire(ll,444,LL_ALL,8,0,0);
+    CHECK(rules>=3 && ll_wire(ll,167,38,1,0,0)==0);
+    add_path_rule(ll,rules,"/",LL_ALL);
+    CHECK(ll_wire(ll,446,rules,0,0,0)==0);
+    int64_t writer=path_operation(ll,56,"tool",O_RDWR);
+    CHECK(writer>=3 && write_file(ll,writer,"private")==7);
+    disconnect_broker(&ll);
+    CHECK(file_operation(client[0],52,lower,0777,0).result==-ESTALE);
+    CHECK(set_times(client[0],lower,"",AT_EMPTY_PATH,NULL)==-ESTALE);
+    CHECK(lstat(link[0],&st)==0 && S_ISREG(st.st_mode));
+    CHECK(lstat(link[1],&st)==0 && S_ISLNK(st.st_mode));
+    char bytes[8]={0};
+    CHECK(pread(direct,bytes,7,0)==7 && !strcmp(bytes,"package") && close(direct)==0);
+    int64_t sibling=path_operation(client[1],56,"tool",O_RDONLY);
+    response=file_operation(client[1],63,sibling,7,0);
+    CHECK(response.result==7 && !memcmp(response.data,"package",7));
+    CHECK(rename_path(client[1],"tool","renamed")==0);
+    CHECK(file_operation(client[1],52,sibling,0644,0).result==0);
+    CHECK(set_times(client[1],sibling,"",AT_EMPTY_PATH,NULL)==0);
+    CHECK(rename_path(client[1],"renamed","tool")==0);
+    CHECK(path_operation(client[1],53,"tool",0600)==0);
+    CHECK(lstat(link[1],&st)==0 && S_ISREG(st.st_mode) && (st.st_mode&0777)==0600);
+    CHECK(fstat(body,&st)==0 && (st.st_mode&0777)==0700 && st.st_nlink==1);
+    CHECK(pread(body,bytes,7,0)==7 && !strcmp(bytes,"package"));
+    for (unsigned i=0;i<2;++i) {
+        CHECK(path_operation(client[i],35,"tool",0)==0);
+        disconnect_broker(&client[i]);
+        CHECK(rmdir(workspace[i])==0 && rmdir(env[i])==0);
+    }
+    CHECK(close(body)==0 && unlink(blob)==0 && rmdir(store)==0 && rmdir(environments)==0);
+    puts("PASS two workspace shared read FD, copy-up, scoped writes, metadata, mmap rights and immutable base");
+}
+
 int main(void) {
     guest_exec_mode_classes();
     const char *temporary_directory = getenv("TMPDIR");
@@ -1967,6 +2134,7 @@ int main(void) {
     joined_path(temporary, sizeof(temporary), temporary_directory, "sucrune-broker-XXXXXX");
     char *root = mkdtemp(temporary);
     CHECK(root != NULL);
+    shared_tool_copyup(root);
     char workspace[2048], outside[2048], sentinel[2048];
     joined_path(workspace, sizeof(workspace), root, "workspace");
     joined_path(outside, sizeof(outside), root, "outside");
@@ -1977,6 +2145,7 @@ int main(void) {
     path_boundaries(workspace, outside);
     preallocate_regular_file(workspace);
     shared_mapping_right(workspace);
+    guest_volume_and_counters(workspace);
     optional_read_right(workspace);
     access_and_readlink_queries(workspace);
     distribution_symlinks(workspace);

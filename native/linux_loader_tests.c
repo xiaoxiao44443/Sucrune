@@ -210,6 +210,19 @@ static void synthetic_tests(void) {
         valid(bytes,FIXTURE_SIZE,page,1,1); positive_cases++;
         fixture(bytes); segment_get(bytes,2U,&p); p.p_type=PT_NULL; segment_set(bytes,2U,&p);
         valid(bytes,FIXTURE_SIZE,page,0,0); positive_cases++;
+        /* lld's padded PT_GNU_RELRO in the ARM64 ripgrep release. */
+        fixture(bytes); segment_get(bytes,1U,&p); p.p_memsz=0x1100U; segment_set(bytes,1U,&p);
+        size_t end=(0x5100U+page-1U)&~(page-1U);
+        p=(Elf64_Phdr){.p_type=PT_GNU_RELRO,.p_flags=PF_R,.p_offset=0x4800U,.p_vaddr=0x4800U,
+                      .p_filesz=0x800U,.p_memsz=end-0x4800U,.p_align=1U};
+        segment_set(bytes,7U,&p); valid(bytes,FIXTURE_SIZE,page,0,1); positive_cases++;
+        struct sucrune_linux_plan relro;
+        p.p_memsz++; segment_set(bytes,7U,&p);
+        CHECK(sucrune_linux_validate(bytes,FIXTURE_SIZE,page,&relro)==SUCRUNE_ELF_BAD_BOUNDS); negative_cases++;
+        p.p_memsz--; p.p_filesz++; segment_set(bytes,7U,&p);
+        CHECK(sucrune_linux_validate(bytes,FIXTURE_SIZE,page,&relro)==SUCRUNE_ELF_BAD_BOUNDS); negative_cases++;
+        p.p_filesz--; p.p_offset++; segment_set(bytes,7U,&p);
+        CHECK(sucrune_linux_validate(bytes,FIXTURE_SIZE,page,&relro)==SUCRUNE_ELF_BAD_BOUNDS); negative_cases++;
         /* The allowed load/header maxima must work, not only reject overflow. */
         fixture(bytes); header_get(bytes,&h); h.e_phnum=SUCRUNE_ELF_MAX_PHDRS;
         header_set(bytes,&h);

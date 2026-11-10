@@ -1,6 +1,7 @@
 #ifndef SUCRUNE_GUEST_PROCESSES_H
 #define SUCRUNE_GUEST_PROCESSES_H
 #include "guest_fds.h"
+#include "project_scope.h"
 #include "guest_abi.h"
 #include "guest_network.h"
 #include "guest_signals.h"
@@ -19,7 +20,7 @@ struct sucrune_process_snapshot {
     const struct sucrune_guest_space *space, *fixed_space;
     const struct sucrune_fd_table *descriptors;
     const struct sucrune_guest_network *network;
-    int broker;
+    int broker, scope_bus;
     struct sucrune_project_owner owner;
     uint64_t signal_mask;
     struct sucrune_signal_stack signal_stack;
@@ -36,7 +37,7 @@ int sucrune_processes_take_child_signal(struct sucrune_process_group *group,stru
 
 /* Create before guest filters are installed. Dedicated supervisor remains alive
  * until destruction; its death delivers SIGKILL to each direct fork child. */
-int sucrune_processes_create(struct sucrune_process_group **out);
+int sucrune_processes_create(struct sucrune_process_group **out, struct sucrune_scope scope);
 /* Caller HOLDS its process-state lock across this entire call. The supervisor
  * performs Bionic fork without taking it. The COW snapshot includes the calling
  * guest's actual address space. The child uses a separate raw dispatcher which

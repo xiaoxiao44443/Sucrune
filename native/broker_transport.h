@@ -15,7 +15,8 @@
  * A passed PTY master must be CLOEXEC, a character device, and report the
  * claimed kernel PTY number. PTY slave responses never pass a descriptor.
  * Returned FDs are CLOEXEC, nonblocking INET/INET6 TCP or UDP sockets matching
- * the constructor's type/domain; ACCEPT admits TCP only. No token or FD
+ * the constructor's type/domain; ACCEPT admits TCP only. ECHO_SOCKET returns
+ * only a connected anonymous nonblocking Unix seqpacket endpoint. No token or FD
  * is published to guest memory by this transport layer.
  */
 int sucrune_broker_send_request(int fd, const struct sucrune_request *request, int timeout_ms);

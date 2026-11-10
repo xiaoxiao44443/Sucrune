@@ -27,23 +27,24 @@ const (
 )
 
 type request struct {
-	Op            string          `json:"op"`
-	Name          string          `json:"name,omitempty"`
-	EnvID         string          `json:"env_id,omitempty"`
-	Path          string          `json:"path,omitempty"`
-	ContentBase64 string          `json:"content_base64,omitempty"`
-	ImportID      string          `json:"import_id,omitempty"`
-	Size          *int64          `json:"size,omitempty"`
-	SHA256        string          `json:"sha256,omitempty"`
-	Executable    bool            `json:"executable,omitempty"`
-	ExecutionID   string          `json:"execution_id,omitempty"`
-	State         string          `json:"state,omitempty"`
-	ExitCode      *int            `json:"exit_code,omitempty"`
-	Stdout        string          `json:"stdout,omitempty"`
-	Stderr        string          `json:"stderr,omitempty"`
-	Truncated     bool            `json:"truncated,omitempty"`
-	Request       json.RawMessage `json:"request,omitempty"`
-	Result        json.RawMessage `json:"result,omitempty"`
+	Op                    string          `json:"op"`
+	Name                  string          `json:"name,omitempty"`
+	EnvID                 string          `json:"env_id,omitempty"`
+	PurgeExecutionHistory bool            `json:"purge_execution_history,omitempty"`
+	Path                  string          `json:"path,omitempty"`
+	ContentBase64         string          `json:"content_base64,omitempty"`
+	ImportID              string          `json:"import_id,omitempty"`
+	Size                  *int64          `json:"size,omitempty"`
+	SHA256                string          `json:"sha256,omitempty"`
+	Executable            bool            `json:"executable,omitempty"`
+	ExecutionID           string          `json:"execution_id,omitempty"`
+	State                 string          `json:"state,omitempty"`
+	ExitCode              *int            `json:"exit_code,omitempty"`
+	Stdout                string          `json:"stdout,omitempty"`
+	Stderr                string          `json:"stderr,omitempty"`
+	Truncated             bool            `json:"truncated,omitempty"`
+	Request               json.RawMessage `json:"request,omitempty"`
+	Result                json.RawMessage `json:"result,omitempty"`
 }
 
 type apiError struct {
@@ -219,7 +220,15 @@ func (s *Service) call(req request) (any, error) {
 		if active {
 			return nil, problem("conflict", "environment has an active execution")
 		}
-		if err := s.catalog.Delete(req.EnvID); err != nil {
+		if req.PurgeExecutionHistory {
+			if _, err := s.catalog.Get(req.EnvID); err != nil && !errors.Is(err, environment.ErrNotFound) {
+				return nil, err
+			}
+			if err := s.purgeExecutionHistory(req.EnvID); err != nil {
+				return nil, err
+			}
+		}
+		if err := s.catalog.Delete(req.EnvID); err != nil && !(req.PurgeExecutionHistory && errors.Is(err, environment.ErrNotFound)) {
 			return nil, err
 		}
 		if err := syncDirectory(filepath.Join(s.root, "environments")); err != nil {
