@@ -1,6 +1,7 @@
 /* APK-owned immutable content. A reference is a project-local symlink with
  * an opaque target. Never follow it through the host pathname resolver. */
 static int base_key(int parent, const char *name, char key[70], mode_t *mode) {
+    *mode = 0;
     const size_t prefix = sizeof(SUCRUNE_BASE_MARKER_PREFIX) - 1;
     char target[sizeof(SUCRUNE_BASE_MARKER_PREFIX) + 69];
     ssize_t n = readlinkat(parent, name, target, sizeof(target));

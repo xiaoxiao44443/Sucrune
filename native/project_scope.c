@@ -28,7 +28,14 @@ void sucrune_scope_name(const char *program) {
     char path[64];
     snprintf(path,sizeof(path),"/proc/self/task/%d/comm",getpid());
     int fd=open(path,O_WRONLY|O_CLOEXEC);
-    if(fd>=0) { (void)write(fd,name,strnlen(name,15)); close(fd); }
+    if (fd >= 0) {
+        size_t length = strnlen(name, 15);
+        ssize_t written;
+        do {
+            written = write(fd, name, length);
+        } while (written < 0 && errno == EINTR);
+        close(fd);
+    }
 }
 /* Only the trusted native process receives external signals. Translate a
  * guest handler or mask into the existing pending/rt_sigreturn machinery. */
