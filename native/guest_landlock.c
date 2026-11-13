@@ -135,8 +135,9 @@ static void add_rights(const struct ll_domain *d, int fd, const struct stat *st,
         allowed[i] |= object_rights(d->layers[i], fd, st);
 }
 static int collect(const struct ll_domain *d, int root, int parent, int target, unsigned int allowed[]) {
-    struct stat root_st, st;
+    struct stat root_st, bind_st, st;
     if (fstat(root, &root_st) < 0) return -errno;
+    if (d->bind_root_plus_one && fstat(d->bind_root_plus_one - 1, &bind_st) < 0) return -errno;
     for (unsigned int i = 0; i < d->count; i++)
         allowed[i] = LL_ALL & ~(d->layers[i]->handled | LL_REFER);
     if (target != LL_NO_TARGET) {
@@ -152,7 +153,9 @@ static int collect(const struct ll_domain *d, int root, int parent, int target, 
         if (fstat(dir, &st) < 0) { err = -errno; break; }
         add_rights(d, dir, &st, allowed);
         if (st.st_dev == root_st.st_dev && st.st_ino == root_st.st_ino) break;
-        int up = openat(dir, "..", O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+        bool mount_root = d->bind_root_plus_one && bind_st.st_dev == st.st_dev && bind_st.st_ino == st.st_ino;
+        int up = mount_root ? fcntl(d->bind_parent_plus_one - 1, F_DUPFD_CLOEXEC, 3)
+                            : openat(dir, "..", O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
         if (up < 0) { err = -errno; break; }
         struct stat higher;
         if (fstat(up, &higher) < 0) { err = -errno; close(up); break; }

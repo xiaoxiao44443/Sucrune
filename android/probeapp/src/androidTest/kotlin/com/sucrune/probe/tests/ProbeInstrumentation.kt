@@ -65,6 +65,7 @@ class ProbeInstrumentation : Instrumentation() {
                 "io" -> IOChecks(this, targetContext, launchArguments).run()
                 "linux" -> LinuxChecks(this, targetContext, launchArguments).run()
                 "landlock" -> landlockChecks(this)
+                "shared_directory" -> sharedDirectoryChecks(this)
                 "resident" -> residentExecutionChecks(this)
                 "network_capability" -> NetworkCapabilityChecks(this, targetContext, launchArguments).run()
                 "process_capability" -> ProcessCapabilityChecks(this, targetContext, launchArguments).run()

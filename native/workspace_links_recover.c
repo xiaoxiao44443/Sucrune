@@ -93,14 +93,18 @@ static int scan_workspace(struct census *c,int fd,unsigned depth) {
     (void)closedir(d); return rc;
 }
 int sucrune_links_all_in_tmp(int root,const struct stat *file,const char *marker,uint64_t names) {
-    if (!names || names>LIMIT_ENTRIES || !file->st_ino) return -EACCES;
     int dir=openat(root,"tmp",O_RDONLY|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
     if (dir<0) return -EACCES;
+    int rc=sucrune_links_all_beneath(dir,file,marker,names);
+    close(dir);
+    return rc;
+}
+int sucrune_links_all_beneath(int dir,const struct stat *file,const char *marker,uint64_t names) {
+    if (!names || names>LIMIT_ENTRIES || !file->st_ino) return -EACCES;
     struct census c={.count=1,.device=file->st_dev,.required=names};
     if (marker) memcpy(c.ids[0].id,marker,sizeof(c.ids[0].id));
     else c.native_inode=file->st_ino;
     int rc=scan_workspace(&c,dir,0);
-    close(dir);
     return rc<0 ? rc : c.ids[0].names==names ? 0 : -EACCES;
 }
 /* Verify all named objects before performing any repair. Never follow metadata symlinks. */

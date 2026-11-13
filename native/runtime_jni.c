@@ -111,7 +111,8 @@ static jintArray open_workspace(JNIEnv *env, jstring directory, int policy, uint
 #include "workspace_dir_rename_jni.inc"
 
 static jintArray configured_workspace(JNIEnv *env, jstring directory, jint policy, jlong network_handle,
-        jboolean build, jint scope, jstring guest_path, jbyteArray data, jobject mount) {
+        jboolean build, jint scope, jstring guest_path, jbyteArray data, jobject mount,
+        const char *source_workspace, const char *source_subdir, const char *guest_target) {
     struct sucrune_exec_image *image = NULL;
     if ((data == NULL) != (guest_path == NULL)) return workspace_descriptors(env, -EINVAL, -1);
     if (data) {
@@ -130,14 +131,20 @@ static jintArray configured_workspace(JNIEnv *env, jstring directory, jint polic
     int result = -EINVAL;
     char *path = utf8(env, directory);
     enum sucrune_workspace_profile profile = build ? SUCRUNE_WORKSPACE_BUILD : SUCRUNE_WORKSPACE_LINUX;
-    if (path && mount) {
+    if (path) {
         struct sucrune_guest_directory callbacks;
-        result = directory_callbacks(env, mount, &callbacks);
-        if (!result) result = sucrune_workspace_broker_mounted(path, &completion, policy, (uint64_t)network_handle,
-            profile, (enum sucrune_write_scope)scope, image, &callbacks);
-    } else if (path) {
-        result = sucrune_workspace_broker_with_image(path, &completion, policy, (uint64_t)network_handle,
-            profile, (enum sucrune_write_scope)scope, image);
+        result = mount ? directory_callbacks(env, mount, &callbacks) : 0;
+        if (!result) {
+            const struct sucrune_guest_directory *directory_mount = mount ? &callbacks : NULL;
+            if (source_workspace) {
+                result = sucrune_workspace_broker_bind(path, &completion, policy, (uint64_t)network_handle,
+                    profile, (enum sucrune_write_scope)scope, image, directory_mount,
+                    source_workspace, source_subdir, guest_target);
+            } else {
+                result = sucrune_workspace_broker_mounted(path, &completion, policy, (uint64_t)network_handle,
+                    profile, (enum sucrune_write_scope)scope, image, directory_mount);
+            }
+        }
     }
     free(path);
     if (image) sucrune_exec_image_release(image);
@@ -149,14 +156,33 @@ JNIEXPORT jintArray JNICALL Java_com_sucrune_probe_NativeProbe_openWorkspaceWith
         jstring directory, jint policy, jlong network_handle, jboolean build, jint scope, jstring guest_path, jbyteArray data) {
     (void)type;
     if (!data) return workspace_descriptors(env, -EINVAL, -1);
-    return configured_workspace(env, directory, policy, network_handle, build, scope, guest_path, data, NULL);
+    return configured_workspace(env, directory, policy, network_handle, build, scope, guest_path, data, NULL,
+        NULL, NULL, NULL);
 }
 JNIEXPORT jintArray JNICALL Java_com_sucrune_probe_NativeProbe_openWorkspaceWithDirectory(JNIEnv *env, jclass type,
         jstring directory, jint policy, jlong network_handle, jboolean build, jint scope,
         jstring guest_path, jbyteArray data, jobject mount) {
     (void)type;
     if (!mount) return workspace_descriptors(env, -EINVAL, -1);
-    return configured_workspace(env, directory, policy, network_handle, build, scope, guest_path, data, mount);
+    return configured_workspace(env, directory, policy, network_handle, build, scope, guest_path, data, mount,
+        NULL, NULL, NULL);
+}
+JNIEXPORT jintArray JNICALL Java_com_sucrune_probe_NativeProbe_openWorkspaceWithBind(JNIEnv *env, jclass type,
+        jstring directory, jint policy, jlong network_handle, jboolean build, jint scope, jstring guest_path,
+        jbyteArray data, jobject mount, jstring source_workspace, jstring source_subdir, jstring guest_target) {
+    (void)type;
+    char *source = utf8(env, source_workspace);
+    char *subdir = source ? utf8(env, source_subdir) : NULL;
+    char *target = subdir ? utf8(env, guest_target) : NULL;
+    jintArray value = NULL;
+    if (!(*env)->ExceptionCheck(env)) {
+        value = target ? configured_workspace(env, directory, policy, network_handle, build, scope, guest_path,
+            data, mount, source, subdir, target) : workspace_descriptors(env, -EINVAL, -1);
+    }
+    free(source);
+    free(subdir);
+    free(target);
+    return value;
 }
 JNIEXPORT jstring JNICALL Java_com_sucrune_probe_NativeProbe_runProcessProbe(JNIEnv *env, jclass type, jstring runner_path) {
     (void)type;

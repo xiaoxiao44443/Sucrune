@@ -2125,7 +2125,133 @@ static void shared_tool_copyup(const char *root) {
     puts("PASS two workspace shared read FD, copy-up, scoped writes, metadata, mmap rights and immutable base");
 }
 
-int main(void) {
+static void create_bind_test_root(const char *env, char *root, size_t size) {
+    CHECK(mkdir(env,0700)==0);
+    joined_path(root,size,env,"workspace");
+    CHECK(mkdir(root,0700)==0);
+    const char *dirs[]={"home","home/sugar","home/sugar/.dsh","workspace","tmp"};
+    for (size_t i=0; i<sizeof(dirs)/sizeof(dirs[0]); i++) {
+        char path[2048];
+        joined_path(path,sizeof(path),root,dirs[i]);
+        CHECK(mkdir(path,0700)==0);
+    }
+}
+
+static struct client shared_home_client(const char *root, const char *owner, enum sucrune_write_scope scope) {
+    struct client client;
+    client.socket=sucrune_workspace_broker_bind(root,&client.done,0,0,SUCRUNE_WORKSPACE_LINUX,
+            scope,NULL,NULL,owner,"home/sugar/.dsh","/home/sugar/.dsh");
+    CHECK(client.socket>=0 && client.done>=0);
+    return client;
+}
+
+static void check_bind_text(struct client client, const char *path, const char *text) {
+    int64_t handle=path_operation(client,56,path,O_RDONLY);
+    CHECK(handle>=3);
+    struct sucrune_response read=file_operation(client,SUCRUNE_BROKER_PREAD64,handle,(int64_t)strlen(text),0);
+    CHECK(read.result==(int64_t)strlen(text) && memcmp(read.data,text,strlen(text))==0);
+    CHECK(ll_wire(client,57,handle,0,0,0)==0);
+}
+
+static void recovery_profile_bind(const char *guest,const char *owner,const char *temporary) {
+    char storage[2048];
+    joined_path(storage,sizeof(storage),temporary,"recovery-documents");
+    CHECK(mkdir(storage,0700)==0);
+    struct mounted_fixture fixture={.root=open(storage,O_RDONLY|O_DIRECTORY|O_CLOEXEC)};
+    CHECK(fixture.root>=0);
+    struct sucrune_guest_directory volume={&fixture,mount_release,mount_status,mount_list,mount_file_open,
+        mount_mkdir,mount_remove,mount_move};
+    CHECK(mount_mkdir(&fixture,"default")==0 && mount_mkdir(&fixture,"default/repair")==0);
+    CHECK(mount_mkdir(&fixture,"default/repair/.dsh")==0);
+    const char *target="/workspace/default/repair/.dsh";
+    struct client diagnostic;
+    diagnostic.socket=sucrune_workspace_broker_bind(guest,&diagnostic.done,0,0,SUCRUNE_WORKSPACE_LINUX,
+            SUCRUNE_WRITE_PROJECT,NULL,&volume,owner,"home/sugar/.dsh",target);
+    CHECK(diagnostic.socket>=0);
+    CHECK(path_operation(diagnostic,49,target,0)==0);
+    check_cwd(diagnostic,target);
+    check_bind_text(diagnostic,"published","updated");
+    int64_t saved=path_operation(diagnostic,56,"diagnostic-check",O_CREAT|O_WRONLY);
+    CHECK(saved>=3 && write_file(diagnostic,saved,"repair")==6);
+    CHECK(path_operation(diagnostic,49,"..",0)==0);
+    check_cwd(diagnostic,"/workspace/default/repair");
+    CHECK(path_operation(diagnostic,56,"/home/sugar/.dsh/diagnostic-check",O_RDONLY)==-ENOENT);
+    disconnect_broker(&diagnostic);
+    CHECK(fixture.released==1 && mount_remove(&fixture,"default/repair/.dsh",true)==0);
+    CHECK(mount_remove(&fixture,"default/repair",true)==0 && mount_remove(&fixture,"default",true)==0);
+    CHECK(close(fixture.root)==0 && rmdir(storage)==0);
+    struct client reader=landlock_client(owner);
+    check_bind_text(reader,"/home/sugar/.dsh/diagnostic-check","repair");
+    CHECK(path_operation(reader,35,"/home/sugar/.dsh/diagnostic-check",0)==0);
+    disconnect_broker(&reader);
+}
+
+static void shared_home_bind(const char *temporary) {
+    const char *ids[]={"owner","consumer-a","consumer-b"};
+    char env[3][2048],root[3][2048];
+    for (size_t i=0; i<3; i++) {
+        joined_path(env[i],sizeof(env[i]),temporary,ids[i]);
+        create_bind_test_root(env[i],root[i],sizeof(root[i]));
+    }
+    struct client host=landlock_client(root[0]);
+    struct client a=shared_home_client(root[1],root[0],SUCRUNE_WRITE_UNRESTRICTED);
+    struct client b=shared_home_client(root[2],root[0],SUCRUNE_WRITE_PROJECT);
+    struct client read_only=shared_home_client(root[2],root[0],SUCRUNE_WRITE_READ_ONLY);
+    const char *file="/home/sugar/.dsh/sample";
+    const char *linked="/home/sugar/.dsh/published";
+    int64_t fd=path_operation(host,56,file,O_CREAT|O_RDWR);
+    CHECK(fd>=3 && write_file(host,fd,"first")==5);
+    CHECK(link_paths(host,AT_FDCWD,file,AT_FDCWD,linked,0)==0);
+    check_bind_text(b,linked,"first");
+    int64_t writable=path_operation(a,56,linked,O_WRONLY|O_TRUNC);
+    CHECK(writable>=3 && write_file(a,writable,"updated")==7);
+    check_bind_text(host,file,"updated");
+    check_bind_text(read_only,file,"updated");
+    CHECK(path_operation(read_only,56,file,O_WRONLY)==-EACCES);
+    CHECK(path_operation(b,56,file,O_WRONLY|O_TRUNC)==-EACCES);
+    CHECK(path_operation(b,56,"/workspace/private-a",O_RDONLY)==-ENOENT);
+    CHECK(path_operation(a,56,"/workspace/private-a",O_CREAT|O_RDWR)>=3);
+    CHECK(path_operation(b,56,"/workspace/private-a",O_RDONLY)==-ENOENT);
+    CHECK(path_operation(b,56,"/workspace/private-b",O_CREAT|O_RDWR)>=3);
+    CHECK(rename_path(a,file,"/workspace/moved")==-EXDEV);
+    CHECK(link_paths(a,AT_FDCWD,file,AT_FDCWD,"/workspace/alias",0)==-EXDEV);
+    CHECK(path_operation(a,49,"/home/sugar/.dsh",0)==0);
+    check_cwd(a,"/home/sugar/.dsh");
+    struct client child=landlock_fork(a);
+    check_bind_text(child,"published","updated");
+    CHECK(path_operation(child,49,"..",0)==0);
+    check_cwd(child,"/home/sugar");
+    CHECK(close(child.socket)==0);
+    int64_t set=ll_wire(a,444,LL_ALL,8,0,0);
+    CHECK(set>=3);
+    add_path_rule(a,set,"/",LL_READ_DIR|LL_READ_FILE);
+    add_path_rule(a,set,"/workspace",LL_ALL);
+    CHECK(ll_wire(a,167,38,1,0,0)==0 && ll_wire(a,446,set,0,0,0)==0);
+    check_bind_text(a,file,"updated");
+    CHECK(path_operation(a,56,file,O_RDWR)==-EACCES);
+    disconnect_broker(&a);
+    disconnect_broker(&b);
+    disconnect_broker(&read_only);
+    recovery_profile_bind(root[2],root[0],temporary);
+    CHECK(path_operation(host,35,file,0)==0 && path_operation(host,35,linked,0)==0);
+    disconnect_broker(&host);
+    for (size_t i=0; i<3; i++) {
+        struct client cleanup=landlock_client(root[i]);
+        if (i==1) CHECK(path_operation(cleanup,35,"/workspace/private-a",0)==0);
+        if (i==2) CHECK(path_operation(cleanup,35,"/workspace/private-b",0)==0);
+        const char *dirs[]={"home/sugar/.dsh","home/sugar","home","workspace","tmp"};
+        for (size_t d=0; d<sizeof(dirs)/sizeof(dirs[0]); d++)
+            CHECK(path_operation(cleanup,35,dirs[d],AT_REMOVEDIR)==0);
+        disconnect_broker(&cleanup);
+        char store[2048];
+        joined_path(store,sizeof(store),env[i],"workspace.sucrune-inodes-v1");
+        CHECK(rmdir(store)==0 || errno==ENOENT);
+        CHECK(rmdir(root[i])==0 && rmdir(env[i])==0);
+    }
+    (void)puts("PASS shared home across two projects, project isolation, read/write scopes, hard links, Landlock, fork and nested recovery mount");
+}
+
+int main(int argc,char **argv) {
     guest_exec_mode_classes();
     const char *temporary_directory = getenv("TMPDIR");
     if (temporary_directory == NULL || temporary_directory[0] == '\0') temporary_directory = "/tmp";
@@ -2134,6 +2260,11 @@ int main(void) {
     joined_path(temporary, sizeof(temporary), temporary_directory, "sucrune-broker-XXXXXX");
     char *root = mkdtemp(temporary);
     CHECK(root != NULL);
+    shared_home_bind(root);
+    if (argc==2 && !strcmp(argv[1],"--shared-home")) {
+        CHECK(rmdir(root)==0);
+        return 0;
+    }
     shared_tool_copyup(root);
     char workspace[2048], outside[2048], sentinel[2048];
     joined_path(workspace, sizeof(workspace), root, "workspace");

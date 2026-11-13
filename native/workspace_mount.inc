@@ -41,11 +41,15 @@ static int same_mounted_directory(struct broker *b,int pinned,const char *path) 
 static int mount_right(struct broker *b,unsigned int rights) {
     return ll_check(&b->domain,b->root,b->family->mount_anchor,LL_NO_TARGET,rights);
 }
+static bool mount_contains_bind(struct broker *b,const char *path) {
+    return b->family->bind_in_workspace && under_root(b->family->bind_target+11,path);
+}
 /* Resolve components in the granted tree. Absolute guest symlinks leading to
  * this mount have already been followed by walk_parent. Its '..' boundary is
  * the guest /; a document ID or a host path is never parsed as a guest path. */
 static int walk_mount(struct broker *b,const char *start,const char *pending,bool follow,
                       bool mutation,char *leaf,bool *trailing) {
+    b->walk_bind=false;
     size_t used=strlen(start);
     if (used >= sizeof(b->mount_path)) return -ENAMETOOLONG;
     memcpy(b->mount_path,start,used+1);
@@ -81,6 +85,18 @@ static int walk_mount(struct broker *b,const char *start,const char *pending,boo
             memcpy(b->mount_path+used,p,len);
             used+=len;
             b->mount_path[used]='\0';
+        }
+        if (b->family->bind_in_workspace && !strcmp(b->mount_path,b->family->bind_target+sizeof("/workspace/")-1)) {
+            const char *rest=end;
+            while (*rest=='/') ++rest;
+            if (!*rest && mutation) return -EBUSY;
+            if (b->walk_depth>=24) return -ELOOP;
+            int pin=fcntl(b->family->bind_root,F_DUPFD_CLOEXEC,3);
+            if (pin<0) return -errno;
+            ++b->walk_depth;
+            rc=walk_posix(b,pin,true,*rest?rest:".",follow,mutation,leaf,trailing);
+            --b->walk_depth;
+            return rc;
         }
         p=end;
     }
@@ -275,7 +291,7 @@ static int mount_rename(struct broker *b,const struct sucrune_request *r) {
     int fd=walk_parent(b,r->args[0],source,false,true,leaf,&trailing);
     if (fd>=0) {close(fd);return -EXDEV;}
     if (fd!=MOUNT_TARGET) return fd;
-    if (!*b->mount_path || b->mount_dot) return -EBUSY;
+    if (!*b->mount_path || b->mount_dot || mount_contains_bind(b,b->mount_path)) return -EBUSY;
     strcpy(old,b->mount_path);
     struct stat src;
     rc=mount_stat(b,old,&src);
@@ -284,7 +300,7 @@ static int mount_rename(struct broker *b,const struct sucrune_request *r) {
     fd=walk_parent(b,r->args[1],dest,false,true,leaf,&trailing);
     if (fd>=0) {close(fd);return -EXDEV;}
     if (fd!=MOUNT_TARGET) return fd;
-    if (!*b->mount_path || b->mount_dot) return -EBUSY;
+    if (!*b->mount_path || b->mount_dot || mount_contains_bind(b,b->mount_path)) return -EBUSY;
     if (trailing && !S_ISDIR(src.st_mode)) return -ENOTDIR;
     if (b->write_scope==SUCRUNE_WRITE_READ_ONLY) return -EACCES;
     unsigned int rights=S_ISDIR(src.st_mode) ? LL_REMOVE_DIR|LL_MAKE_DIR : LL_REMOVE_FILE|LL_MAKE_REG;
@@ -313,7 +329,7 @@ static int mount_path_operation(struct broker *b,const struct sucrune_request *r
         return rc<0 ? rc : b->family->mount.mkdir(b->family->mount.context,b->mount_path);
     }
     case 35:
-        if (!*b->mount_path || b->mount_dot) return -EBUSY;
+        if (!*b->mount_path || b->mount_dot || mount_contains_bind(b,b->mount_path)) return -EBUSY;
         if (b->write_scope==SUCRUNE_WRITE_READ_ONLY) return -EACCES;
         if (r->args[1]!=0 && r->args[1]!=AT_REMOVEDIR) return -EINVAL;
         if (b->mount_requires_dir && r->args[1]!=AT_REMOVEDIR) return -EISDIR;
@@ -339,6 +355,7 @@ static int mount_path_operation(struct broker *b,const struct sucrune_request *r
             char *cwd=strdup(b->mount_path);
             if (!cwd) { close(pin); return -ENOMEM; }
             free(b->mount_cwd); b->mount_cwd=cwd;
+            b->cwd_bind=false;
             close(b->cwd); b->cwd=pin; return 0;
         }
         return mount_access(b,&st,(int)r->args[1]);

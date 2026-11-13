@@ -161,6 +161,14 @@ int sucrune_workspace_broker_mounted(const char *workspace, int *completion, int
                                     uint64_t network_handle, enum sucrune_workspace_profile profile,
                                     enum sucrune_write_scope scope, struct sucrune_exec_image *image,
                                     const struct sucrune_guest_directory *mount);
+/* In addition to the optional document tree, expose a directory owned by
+ * another trusted environment. source_subdir is relative to its root and
+ * guest_target is absolute in this environment. Same callback ownership as above. */
+int sucrune_workspace_broker_bind(const char *workspace, int *completion, int network_policy,
+                                uint64_t network_handle, enum sucrune_workspace_profile profile,
+                                enum sucrune_write_scope scope, struct sucrune_exec_image *image,
+                                const struct sucrune_guest_directory *mount, const char *source_workspace,
+                                const char *source_subdir, const char *guest_target);
 int sucrune_workspace_broker_with_image(const char *workspace, int *completion, int network_policy,
                                     uint64_t network_handle, enum sucrune_workspace_profile profile,
                                     enum sucrune_write_scope scope, struct sucrune_exec_image *image);

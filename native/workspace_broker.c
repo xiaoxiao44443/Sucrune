@@ -39,6 +39,10 @@ struct broker_family {
     atomic_uint sessions;
     struct sucrune_guest_directory mount;
     int mount_anchor;
+    int bind_root, bind_parent;
+    char *bind_target; /* Full guest path; never a guest-supplied host path. */
+    const char *bind_name;
+    bool bind_in_workspace;
 };
 struct mount_file {
     char *path;
@@ -64,6 +68,7 @@ struct file_status {
     uid_t image_uid;
     gid_t image_gid;
     struct mount_file *mounted;
+    bool bind;
 };
 struct broker {
     int socket, root, completion;
@@ -72,6 +77,9 @@ struct broker {
     enum sucrune_workspace_profile profile;
     enum sucrune_write_scope write_scope;
     struct sucrune_workspace_links links;
+    struct sucrune_workspace_links bind_links;
+    int first_lock, second_lock;
+    bool walk_bind, cwd_bind;
     int files[FILE_SLOTS];
     int descriptor_flags[FILE_SLOTS];
     struct file_status *status[FILE_SLOTS];
@@ -116,6 +124,9 @@ static void release_family(struct broker_family *family) {
     if(family!=NULL && atomic_fetch_sub_explicit(&family->sessions,1U,memory_order_acq_rel)==1U) {
         if (family->mount.destroy) family->mount.destroy(family->mount.context);
         if (family->mount_anchor>=0) close(family->mount_anchor);
+        if (family->bind_root>=0) close(family->bind_root);
+        if (family->bind_parent>=0) close(family->bind_parent);
+        free(family->bind_target);
         free(family);
     }
 }
@@ -252,9 +263,23 @@ static struct mount_file *mounted_file(struct broker *b,int64_t fd) {
 }
 static int walk_mount(struct broker *,const char *,const char *,bool,bool,char *,bool *);
 static int same_mounted_directory(struct broker *,int,const char *);
+static int descriptor_name(int, char *);
+static int walk_posix(struct broker *,int,bool,const char *,bool,bool,char *,bool *);
+static bool under_root(const char *path,const char *root) {
+    size_t n=strlen(root);
+    return !strncmp(path,root,n) && (!path[n] || path[n]=='/');
+}
+static bool bound_slot(struct broker *b,int64_t slot) {
+    return slot==AT_FDCWD ? b->cwd_bind :
+        slot>=3 && slot<FILE_SLOTS && b->status[slot] && b->status[slot]->bind;
+}
+static struct sucrune_workspace_links *walk_links(struct broker *b) {
+    return b->walk_bind ? &b->bind_links : &b->links;
+}
 static int walk_parent(struct broker *b, int64_t dir, const char *path, bool follow,
                        bool mutation, char *leaf, bool *trailing) {
     if (!*path) return -ENOENT;
+    b->walk_bind=false;
     if (b->family->mount.stat && path[0]!='/') {
         struct mount_file *file=mounted_file(b,dir);
         if (file && !S_ISDIR(file->attributes.st_mode)) return -ENOTDIR;
@@ -265,12 +290,25 @@ static int walk_parent(struct broker *b, int64_t dir, const char *path, bool fol
             return valid<0 ? valid : walk_mount(b,start,path,follow,mutation,leaf,trailing);
         }
     }
+    bool bound=path[0]!='/' && bound_slot(b,dir);
+    return walk_posix(b,directory_base(b,dir,path),bound,path,follow,mutation,leaf,trailing);
+}
+/* Takes ownership of the starting directory. The source subtree and the
+ * destination parent are pinned by the manager for the life of the family. */
+static int walk_posix(struct broker *b,int parent,bool bound,const char *path,bool follow,
+                      bool mutation,char *leaf,bool *trailing) {
+    if (parent<0) return parent;
+    b->walk_bind=bound;
+    if (bound) {
+        char base[PATH_MAX], name[PATH_MAX];
+        int rc=descriptor_name(b->family->bind_root,base);
+        if (!rc) rc=descriptor_name(parent,name);
+        if (rc<0 || !under_root(name,base)) {close(parent);return rc<0?rc:-ESTALE;}
+    }
     char pending[SUCRUNE_PATH_LIMIT], link[SUCRUNE_PATH_LIMIT];
     size_t length = strlen(path);
-    if (length >= sizeof(pending)) return -ENAMETOOLONG;
+    if (length >= sizeof(pending)) {close(parent);return -ENAMETOOLONG;}
     memcpy(pending, path, length + 1);
-    int parent = directory_base(b, dir, path);
-    if (parent < 0) return parent;
     unsigned int hops = 0;
     int error = 0;
     char *cursor = pending;
@@ -287,6 +325,18 @@ static int walk_parent(struct broker *b, int64_t dir, const char *path, bool fol
         while (*rest == '/') rest++;
         bool last = !*rest;
         *trailing = last && end != rest;
+        if (!bound && b->family->bind_target && !b->family->bind_in_workspace && !strcmp(leaf,b->family->bind_name)) {
+            int match=same_inode(parent,b->family->bind_parent);
+            if (match<0) {error=-match;break;}
+            if (match) {
+                if (last && mutation) {error=EBUSY;break;}
+                int pin=fcntl(b->family->bind_root,F_DUPFD_CLOEXEC,3);
+                if (pin<0) {error=errno;break;}
+                close(parent);parent=pin;bound=b->walk_bind=true;
+                if (last) {strcpy(leaf,".");return parent;}
+                cursor=rest;continue;
+            }
+        }
         if (b->family->mount.stat && !strcmp(leaf,"workspace")) {
             int root=same_inode(parent,b->root);
             if (root!=0) {
@@ -295,6 +345,30 @@ static int walk_parent(struct broker *b, int64_t dir, const char *path, bool fol
             }
         }
         if (strcmp(leaf, "..") == 0) {
+            if (bound) {
+                int at_bind=same_inode(parent,b->family->bind_root);
+                if (at_bind<0) {error=-at_bind;break;}
+                if (at_bind) {
+                    if (b->family->bind_in_workspace) {
+                        char relative[SUCRUNE_PATH_LIMIT];
+                        size_t n=(size_t)(b->family->bind_name-b->family->bind_target)-1;
+                        size_t start=strlen("/workspace");
+                        if (n>start) memcpy(relative,b->family->bind_target+start+1,n-start-1);
+                        relative[n>start?n-start-1:0]=0;
+                        close(parent);
+                        if (b->walk_depth>=24) return -ELOOP;
+                        ++b->walk_depth;
+                        int result=walk_mount(b,relative,end,follow,mutation,leaf,trailing);
+                        --b->walk_depth;
+                        return result;
+                    }
+                    int up=fcntl(b->family->bind_parent,F_DUPFD_CLOEXEC,3);
+                    if (up<0) {error=errno;break;}
+                    close(parent);parent=up;bound=b->walk_bind=false;
+                    if (last) {strcpy(leaf,".");return parent;}
+                    cursor=rest;continue;
+                }
+            }
             int at_root = same_inode(parent, b->root);
             if (at_root != 0) { error = at_root < 0 ? -at_root : EPERM; break; }
             int higher = openat(parent, "..", O_DIRECTORY | O_PATH | O_NOFOLLOW | O_CLOEXEC);
@@ -333,7 +407,7 @@ static int walk_parent(struct broker *b, int64_t dir, const char *path, bool fol
         }
         /* Internal hard-link markers represent ordinary files even for lstat,
          * and must never be expanded as guest text. */
-        pinned = sucrune_links_target(&b->links, pinned);
+        pinned = sucrune_links_target(walk_links(b), pinned);
         if (pinned < 0) { error = -pinned; break; }
         struct stat st;
         if (fstat(pinned, &st) < 0) { error = errno; close(pinned); break; }
@@ -351,6 +425,7 @@ static int walk_parent(struct broker *b, int64_t dir, const char *path, bool fol
                 int root = directory_base(b, AT_FDCWD, "/");
                 if (root < 0) { error = -root; break; }
                 (void)close(parent); parent = root;
+                bound=b->walk_bind=false;
             }
             cursor = pending;
             continue;
@@ -368,6 +443,7 @@ static int query_target(struct broker *b, int64_t directory, const char *path, b
                         bool require_link) {
     if (!*path) {
         if (!empty_allowed) return -ENOENT;
+        b->walk_bind=bound_slot(b,directory);
         int fd = directory == AT_FDCWD ? b->cwd : host_file(b, directory);
         if (fd < 0) return -errno;
         int copy = fcntl(fd, F_DUPFD_CLOEXEC, 3);
@@ -387,7 +463,7 @@ static int query_target(struct broker *b, int64_t directory, const char *path, b
     int target = openat(parent, leaf, O_PATH | O_NOFOLLOW | O_CLOEXEC | (trailing ? O_DIRECTORY : 0));
     int error = errno;
     (void)close(parent);
-    return target < 0 ? -error : sucrune_links_target(&b->links, target);
+    return target < 0 ? -error : sucrune_links_target(walk_links(b), target);
 }
 
 /* Expand only manager-controlled proc magic links for getcwd. Return the
@@ -427,8 +503,21 @@ static int write_area(struct broker *b, int fd) {
     return AREA_PROTECTED;
 }
 static int write_access(struct broker *b, int fd) {
-    if (b->write_scope == SUCRUNE_WRITE_UNRESTRICTED) return 0;
     if (b->write_scope == SUCRUNE_WRITE_READ_ONLY) return -EACCES;
+    if (b->walk_bind) {
+        if (b->write_scope==SUCRUNE_WRITE_PROJECT && strncmp(b->family->bind_target,"/workspace/",11)) return -EACCES;
+        char root[PATH_MAX], path[PATH_MAX];
+        struct stat st;
+        if (fstat(fd,&st)<0) return -errno;
+        int rc=descriptor_name(b->family->bind_root,root);
+        if (!rc) rc=descriptor_name(fd,path);
+        if (rc<0) return rc;
+        bool visible=under_root(path,root);
+        if (visible && (S_ISDIR(st.st_mode) || st.st_nlink==1)) return 0;
+        if (!S_ISREG(st.st_mode)) return -EACCES;
+        return sucrune_links_check_scope(&b->bind_links,b->family->bind_root,&st,visible,1);
+    }
+    if (b->write_scope == SUCRUNE_WRITE_UNRESTRICTED) return 0;
     struct stat st;
     if (fstat(fd, &st) < 0) return -errno;
     if (!st.st_nlink) return -EACCES;
@@ -454,17 +543,32 @@ static int current_directory(struct broker *b, struct sucrune_response *out) {
     struct stat st;
     if (fstat(b->cwd, &st) < 0) return -errno;
     if (st.st_nlink == 0) return -ENOENT;
-    int rc = descriptor_name(b->root, root);
+    int rc = descriptor_name(b->cwd_bind ? b->family->bind_root : b->root, root);
     if (rc == 0) rc = descriptor_name(b->cwd, cwd);
     if (rc < 0) return rc;
     size_t n = strlen(root);
     if (strncmp(root, cwd, n) || (cwd[n] && cwd[n] != '/')) return -EPERM;
+    if (b->cwd_bind) {
+        int size=snprintf((char *)out->data,sizeof(out->data),"%s%s",b->family->bind_target,cwd+n);
+        if (size<0 || (size_t)size>=SUCRUNE_PATH_LIMIT) return -ENAMETOOLONG;
+        out->size=(uint32_t)size+1;
+        return (int)out->size;
+    }
     const char *relative = cwd[n] ? cwd + n : "/";
     size_t bytes = strlen(relative) + 1U;
     if (bytes > SUCRUNE_PATH_LIMIT) return -ENAMETOOLONG;
     memcpy(out->data, relative, bytes);
     out->size = (uint32_t)bytes;
     return (int)bytes;
+}
+
+/* Linux does not give Landlock a chmod/utimens bit. In a directory shared
+ * across projects these operations must still respect the session's write
+ * decision. For a detached backing fd, use the export rather than guessing
+ * the path of one of its hard links. */
+static int bind_metadata_access(struct broker *b,int fd) {
+    if (!b->walk_bind || !b->domain.count) return 0;
+    return ll_check(&b->domain,b->root,b->family->bind_root,fd,LL_WRITE_FILE);
 }
 static int64_t query_operation(struct broker *b, const struct sucrune_request *r, struct sucrune_response *out) {
     const char *path; size_t end;
@@ -531,6 +635,9 @@ static int chmod_pinned(int fd, mode_t mode) {
  * detaching. Never apply FD metadata to a newer file at the same name. */
 static int private_fd_target(struct broker *b, int64_t slot) {
     struct file_status *state = b->status[slot];
+    b->walk_bind=state->bind;
+    int permission=bind_metadata_access(b,b->files[slot]);
+    if (permission<0) return permission;
     if (state->private_pin_plus_one) {
         int cached = state->private_pin_plus_one - 1;
         int allowed = write_access(b, cached);
@@ -540,20 +647,25 @@ static int private_fd_target(struct broker *b, int64_t slot) {
     }
     int anchor = state->base_anchor_plus_one - 1;
     char root[PATH_MAX], name[PATH_MAX], leaf[256];
-    int rc = descriptor_name(b->root, root);
+    int rc = descriptor_name(state->bind ? b->family->bind_root : b->root, root);
     if (!rc) rc = descriptor_name(anchor, name);
     if (rc < 0) return rc;
     size_t n = strlen(root);
     if (strncmp(root, name, n) || name[n] != '/') return -ESTALE;
     bool trailing;
-    int parent = walk_parent(b, AT_FDCWD, name + n, false, false, leaf, &trailing);
+    int parent;
+    if (state->bind) {
+        int pin=fcntl(b->family->bind_root,F_DUPFD_CLOEXEC,3);
+        if (pin<0) return -errno;
+        parent=walk_posix(b,pin,true,name+n,false,false,leaf,&trailing);
+    } else parent=walk_parent(b,AT_FDCWD,name+n,false,false,leaf,&trailing);
     if (parent < 0) return parent;
     struct stat a, p;
     if (fstat(anchor, &a)) rc = -errno;
     else if (fstatat(parent, leaf, &p, AT_SYMLINK_NOFOLLOW) || a.st_dev != p.st_dev || a.st_ino != p.st_ino) rc = -ESTALE;
     else rc = write_access(b, parent);
     if (!rc) {
-        rc = sucrune_base_promote(&b->links, parent, leaf);
+        rc = sucrune_base_promote(walk_links(b), parent, leaf);
         if (!rc) rc = -ESTALE;
     }
     if (rc > 0) {
@@ -582,11 +694,15 @@ static int mutable_target(struct broker *b, int64_t directory, const char *path,
     int flags = O_PATH | O_CLOEXEC | O_NOFOLLOW | (trailing ? O_DIRECTORY : 0);
     int target = openat(parent, leaf, flags);
     ino_t base_ino = 0;
-    target = target < 0 ? -errno : sucrune_links_target_info(&b->links, target, &base_ino);
+    target = target < 0 ? -errno : sucrune_links_target_info(walk_links(b), target, &base_ino);
+    if (target>=0) {
+        int permission=bind_metadata_access(b,target);
+        if (permission<0) {close(target);close(parent);return permission;}
+    }
     if (target >= 0 && base_ino) {
         close(target);
         target = write_access(b, parent);
-        if (!target) target = sucrune_base_promote(&b->links, parent, leaf);
+        if (!target) target = sucrune_base_promote(walk_links(b), parent, leaf);
         if (target >= 0) {
             target = openat(parent, leaf, flags);
             if (target < 0) target = -errno;
@@ -637,6 +753,8 @@ static int utimens_project(struct broker *b, const struct sucrune_request *r) {
     int target = mutable_target(b, r->args[0], path, (r->args[1] & AT_EMPTY_PATH) != 0,
                                 !(r->args[1] & AT_SYMLINK_NOFOLLOW));
     if (target < 0) return target;
+    int permission=bind_metadata_access(b,target);
+    if (permission<0) {close(target);return permission;}
     struct stat st;
     if ((error = -write_access(b, target)) != 0) { close(target); return -error; }
     if (fstat(target, &st) != 0) error = errno;
@@ -662,13 +780,20 @@ static int protected_directory(struct broker *b, int parent, const char *leaf) {
     if (target < 0) return -errno;
     int at_root = same_inode(target, b->root);
     int result = at_root ? (at_root < 0 ? at_root : -EPERM) : 0;
-    int current = directory_base(b, AT_FDCWD, ".");
+    int current;
+    if (b->mount_cwd) {
+        current=fcntl(b->family->mount_anchor,F_DUPFD_CLOEXEC,3);
+        if (current<0) current=-errno;
+    } else current=directory_base(b,AT_FDCWD,".");
     while (result == 0 && current >= 0) {
         int match = same_inode(current, target);
         if (match) { result = match < 0 ? match : -EBUSY; break; }
         match = same_inode(current, b->root);
         if (match) { if (match < 0) result = match; break; }
-        int higher = openat(current, "..", O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+        int on_mount=b->family->bind_target ? same_inode(current,b->family->bind_root) : 0;
+        if (on_mount<0) {result=on_mount;break;}
+        int higher = on_mount ? fcntl(b->family->bind_parent,F_DUPFD_CLOEXEC,3) :
+            openat(current, "..", O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
         int previous_root = higher < 0 ? -errno : same_inode(higher, current);
         close(current); current = higher;
         if (previous_root) { result = previous_root < 0 ? previous_root : -EPERM; break; }
@@ -677,6 +802,20 @@ static int protected_directory(struct broker *b, int parent, const char *leaf) {
     else if (result == 0) result = current;
     close(target);
     return result;
+}
+
+/* The native mount follows a pinned parent: keep its ancestors at their
+ * registered location even if the guest renames a nonempty directory. */
+static int protect_mount_ancestor(struct broker *b,int parent,const char *leaf) {
+    if (!b->family->bind_target || b->walk_bind) return 0;
+    int fd=openat(parent,leaf,O_PATH|O_DIRECTORY|O_NOFOLLOW|O_CLOEXEC);
+    if (fd<0) return errno==ENOENT || errno==ENOTDIR || errno==ELOOP ? 0 : -errno;
+    char path[PATH_MAX],anchor[PATH_MAX];
+    int rc=descriptor_name(fd,path);
+    if (!rc) rc=descriptor_name(b->family->bind_parent,anchor);
+    close(fd);
+    if (rc<0) return rc;
+    return under_root(anchor,path) ? -EBUSY : 0;
 }
 static int name_destination(struct broker *b, int64_t dir, const char *path, char *leaf) {
     bool trailing;
@@ -724,6 +863,7 @@ static int64_t link_project_file(struct broker *b, const struct sucrune_request 
     bool follow = (r->args[2] & AT_SYMLINK_FOLLOW) != 0, trailing;
     int file = query_target(b, r->args[0], source, (r->args[2] & AT_EMPTY_PATH) != 0, follow, false);
     if (file < 0) return file;
+    bool source_bind=b->walk_bind;
     struct stat st;
     int rc = 0;
     if (fstat(file, &st) < 0) rc = -errno;
@@ -731,30 +871,33 @@ static int64_t link_project_file(struct broker *b, const struct sucrune_request 
     char leaf[256], oldleaf[256];
     int destfd = rc < 0 ? rc : name_destination(b, r->args[1], dest, leaf);
     if (destfd < 0) rc = destfd;
-    else if (scoped && (!S_ISREG(st.st_mode) || write_area(b,destfd)!=AREA_TMP)) rc = -EACCES;
+    else if (source_bind != b->walk_bind) rc=-EXDEV;
+    else if (source_bind && (rc=write_access(b,destfd))<0) { /* restricted mount */ }
+    else if (!source_bind && scoped && (!S_ISREG(st.st_mode) || write_area(b,destfd)!=AREA_TMP)) rc = -EACCES;
     else if ((rc = ll_check(&b->domain, b->root, destfd, LL_NO_TARGET, ll_make_right(st.st_mode))) != 0) {
         /* No destination was created. */
     } else if (!*source) {
         /* An empty path drops the original dentry, needed for the REFER check. */
-        if (b->domain.count || (r->args[0] != AT_FDCWD && b->status[r->args[0]]->base_ino)) rc = -EOPNOTSUPP;
+        if (source_bind || b->domain.count || (r->args[0] != AT_FDCWD && b->status[r->args[0]]->base_ino)) rc = -EOPNOTSUPP;
         else rc = linkat(file, "", destfd, leaf, AT_EMPTY_PATH) == 0 ? 0 : -errno;
     }
     else {
         int old = walk_parent(b, r->args[0], source, follow, false, oldleaf, &trailing);
         if (old < 0) rc = old;
         else {
-            if (scoped) rc = write_area(b,old)==AREA_TMP ? write_access(b,file) : -EACCES;
+            if (source_bind) rc=write_access(b,file);
+            else if (scoped) rc = write_area(b,old)==AREA_TMP ? write_access(b,file) : -EACCES;
             if (!rc) rc = ll_reparent(&b->domain, b->root, old, file, destfd, st.st_mode);
             if (!rc && S_ISLNK(st.st_mode))
                 rc = linkat(old, oldleaf, destfd, leaf, 0) == 0 ? 0 : -errno;
             else if (!rc) {
-                rc = sucrune_base_promote(&b->links, old, oldleaf);
+                rc = sucrune_base_promote(walk_links(b), old, oldleaf);
                 if (rc > 0) {
                     close(file);
                     file = openat(old, oldleaf, O_PATH | O_NOFOLLOW | O_CLOEXEC);
                     rc = file < 0 ? -errno : 0;
                 }
-                if (!rc) rc = sucrune_links_publish(&b->links, old, oldleaf, file, destfd, leaf);
+                if (!rc) rc = sucrune_links_publish(walk_links(b), old, oldleaf, file, destfd, leaf);
             }
             close(old);
         }
@@ -782,10 +925,10 @@ static int landlock_open(struct broker *b, int parent, const char *leaf, int fla
         if (error) return error;
         if (required & ~allowed) return -EACCES;
         *no_truncate = !(allowed & LL_TRUNCATE);
-        return sucrune_links_open(&b->links, parent, leaf, flags | O_EXCL, mode, base_ino);
+        return sucrune_links_open(walk_links(b), parent, leaf, flags | O_EXCL, mode, base_ino);
     }
     if ((flags & (O_CREAT | O_EXCL)) == (O_CREAT | O_EXCL)) { close(pin); return -EEXIST; }
-    pin = sucrune_links_target_info(&b->links, pin, base_ino);
+    pin = sucrune_links_target_info(walk_links(b), pin, base_ino);
     if (pin < 0) return pin;
     struct stat st;
     int result;
@@ -809,7 +952,7 @@ static int landlock_open(struct broker *b, int parent, const char *leaf, int fla
         if (!result && (required & ~allowed)) result = -EACCES;
         if (!result && scoped) result = write_access(b, *base_ino ? parent : pin);
         if (!result && *base_ino && (access != O_RDONLY || (flags & O_TRUNC))) {
-            result = sucrune_base_promote(&b->links, parent, leaf);
+            result = sucrune_base_promote(walk_links(b), parent, leaf);
             if (result >= 0) {
                 close(pin);
                 pin = openat(parent, leaf, O_PATH | O_NOFOLLOW | O_CLOEXEC);
@@ -834,7 +977,7 @@ static int rename_rights(struct broker *b, int parent, const char *leaf, int des
     if (!b->domain.count) return 0;
     int src = openat(parent, leaf, O_PATH | O_NOFOLLOW | O_CLOEXEC);
     if (src < 0) return -errno;
-    src = sucrune_links_target(&b->links, src);
+    src = sucrune_links_target(walk_links(b), src);
     if (src < 0) return src;
     struct stat st;
     int rc = fstat(src, &st) < 0 ? -errno : 0;
@@ -876,6 +1019,7 @@ static int64_t path_operation(struct broker *b, const struct sucrune_request *r,
     bool must_be_directory;
     int parent = walk_parent(b, r->operation == 49U ? AT_FDCWD : r->args[0], input, follow,
                              mutation, leaf, &must_be_directory);
+    if (parent==-EBUSY && r->operation==34U) return -EEXIST;
     if (parent < 0) return parent;
     if (r->operation == 34U) {
         /* mkdir reports EEXIST before checking permission to create a new name.
@@ -886,7 +1030,7 @@ static int64_t path_operation(struct broker *b, const struct sucrune_request *r,
         }
         if (errno != ENOENT) { error = errno; close(parent); return -error; }
     }
-    bool scoped_open = open && b->write_scope != SUCRUNE_WRITE_UNRESTRICTED &&
+    bool scoped_open = open && (b->walk_bind || b->write_scope != SUCRUNE_WRITE_UNRESTRICTED) &&
         !(r->args[1] & O_PATH) && (r->args[1] & (O_ACCMODE | O_CREAT | O_TRUNC));
     if (mutation || scoped_open) {
         int access = write_access(b, parent);
@@ -912,6 +1056,7 @@ static int64_t path_operation(struct broker *b, const struct sucrune_request *r,
                 int lock_error=pthread_mutex_init(&state->lock,NULL);
                 if(lock_error!=0) {free(state);(void)close(parent);return -lock_error;}
                 atomic_init(&state->refs,1U);
+                state->bind=b->walk_bind;
                 state->guest_nonblock=(int)r->args[1]&O_NONBLOCK;
                 int flags = (int)r->args[1] | O_NOFOLLOW | O_CLOEXEC | O_NONBLOCK;
                 if (must_be_directory) flags |= O_DIRECTORY;
@@ -920,14 +1065,14 @@ static int64_t path_operation(struct broker *b, const struct sucrune_request *r,
                 bool no_truncate = false;
                 if (flags & O_PATH) {
                     file = openat(parent, leaf, O_PATH | O_NOFOLLOW | O_CLOEXEC | (flags & O_DIRECTORY));
-                    file = file < 0 ? -errno : sucrune_links_target_info(&b->links, file, &state->base_ino);
-                } else if (b->domain.count) {
+                    file = file < 0 ? -errno : sucrune_links_target_info(walk_links(b), file, &state->base_ino);
+                } else if (b->domain.count || (b->walk_bind && scoped_open)) {
                     file = landlock_open(b, parent, leaf, flags, mode, exec, scoped_open, &no_truncate, &state->base_ino);
                 } else {
                     /* Never truncate a protected alias before checking the actual FD.
                      * Refuse a read-only truncating open in the confined profile. */
                     if (scoped_open && (flags & O_TRUNC) && (flags & O_ACCMODE) == O_RDONLY) file = -EACCES;
-                    else file = sucrune_links_open(&b->links, parent, leaf, scoped_open ? flags & ~O_TRUNC : flags, mode, &state->base_ino);
+                    else file = sucrune_links_open(walk_links(b), parent, leaf, scoped_open ? flags & ~O_TRUNC : flags, mode, &state->base_ino);
                     if (file >= 0 && scoped_open) {
                         int access = write_access(b, state->base_ino ? parent : file);
                         if (access == 0 && (flags & O_TRUNC) && ftruncate(file, 0) != 0) access = -errno;
@@ -991,7 +1136,7 @@ static int64_t path_operation(struct broker *b, const struct sucrune_request *r,
                     ino_t base_ino = 0;
                     int target=openat(parent,leaf,O_PATH|O_NOFOLLOW|O_CLOEXEC);
                     if(target<0) result=-errno;
-                    else if((target=sucrune_links_target_info(&b->links,target,&base_ino))<0) result=target;
+                    else if((target=sucrune_links_target_info(walk_links(b),target,&base_ino))<0) result=target;
                     else {
                         if(fstat(target,&st)!=0) result=-errno;
                         else if (base_ino) st.st_ino=base_ino;
@@ -999,7 +1144,7 @@ static int64_t path_operation(struct broker *b, const struct sucrune_request *r,
                     }
                 }
                 if(result==0 && !S_ISREG(st.st_mode) && !S_ISDIR(st.st_mode) && !S_ISLNK(st.st_mode)) result=-EACCES;
-                if(result==0) result=sucrune_links_stat(&b->links,&st);
+                if(result==0) result=sucrune_links_stat(walk_links(b),&st);
                 if(result==0) stat_reply(out,&st);
             }
         }
@@ -1007,7 +1152,7 @@ static int64_t path_operation(struct broker *b, const struct sucrune_request *r,
         int directory = openat(parent, leaf, O_PATH | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
         if (directory < 0) result = -errno;
         else if (faccessat(directory, ".", X_OK, 0) != 0) { result = -errno; (void)close(directory); }
-        else { (void)close(b->cwd); b->cwd = directory; free(b->mount_cwd); b->mount_cwd=NULL; result = 0; }
+        else { (void)close(b->cwd); b->cwd = directory; b->cwd_bind=b->walk_bind; free(b->mount_cwd); b->mount_cwd=NULL; result = 0; }
     } else if (r->operation == 34U) {
         mode_t mode = r->args[3] == 1 ? (mode_t)r->args[2] & 0777U & ~b->creation_mask : 0700U;
         result = ll_check(&b->domain, b->root, parent, LL_NO_TARGET, LL_MAKE_DIR);
@@ -1020,11 +1165,12 @@ static int64_t path_operation(struct broker *b, const struct sucrune_request *r,
         }
     } else if (r->operation == 35U) {
         if (r->args[1] != 0 && r->args[1] != AT_REMOVEDIR) result = -EINVAL;
+        else if ((error=protect_mount_ancestor(b,parent,leaf))<0) result=error;
         else if (r->args[1] == AT_REMOVEDIR && (error = protected_directory(b, parent, leaf)) != 0) result = error;
         else {
             result = ll_check(&b->domain, b->root, parent, LL_NO_TARGET,
                               r->args[1] == AT_REMOVEDIR ? LL_REMOVE_DIR : LL_REMOVE_FILE);
-            if (!result) result = sucrune_links_unlink(&b->links,parent,leaf,(int)r->args[1]);
+            if (!result) result = sucrune_links_unlink(walk_links(b),parent,leaf,(int)r->args[1]);
         }
     } else if (r->operation == 38U) {
         const char *other;
@@ -1033,9 +1179,10 @@ static int64_t path_operation(struct broker *b, const struct sucrune_request *r,
         if (error != 0 || end != r->size) result = error ? -error : -EINVAL;
         else {
             char target[256];
-            bool trailing;
+            bool trailing, source_bind=b->walk_bind;
             int second = walk_parent(b, r->args[1], other, false, true, target, &trailing);
             if (second < 0) result = second;
+            else if (source_bind != b->walk_bind) {close(second);result=-EXDEV;}
             else if ((result = write_access(b, second)) < 0) close(second);
             else {
                 struct stat dest;
@@ -1044,19 +1191,20 @@ static int64_t path_operation(struct broker *b, const struct sucrune_request *r,
                 else if (exists && trailing && !S_ISDIR(dest.st_mode)) result = -ENOTDIR;
                 else if (!exists && errno != ENOENT) result = -errno;
                 else {
-                    result = 0;
-                    if (exists && S_ISDIR(dest.st_mode)) {
+                    result = protect_mount_ancestor(b,parent,leaf);
+                    if (!result && exists && S_ISDIR(dest.st_mode)) {
                         struct stat src;
                         if (fstatat(parent, leaf, &src, AT_SYMLINK_NOFOLLOW) != 0) result = -errno;
                         else if (dest.st_dev != src.st_dev || dest.st_ino != src.st_ino)
                             result = protected_directory(b, second, target);
-                    } else if (trailing) {
+                        if (!result) result=protect_mount_ancestor(b,second,target);
+                    } else if (!result && trailing) {
                         struct stat src;
                         if (fstatat(parent, leaf, &src, AT_SYMLINK_NOFOLLOW) != 0) result = -errno;
                         else if (!S_ISDIR(src.st_mode)) result = -ENOTDIR;
                     }
                     if (result == 0) result = rename_rights(b, parent, leaf, second, exists ? &dest : NULL);
-                    if (result == 0) result = sucrune_links_rename(&b->links,parent,leaf,second,target);
+                    if (result == 0) result = sucrune_links_rename(walk_links(b),parent,leaf,second,target);
                 }
                 close(second);
             }
@@ -1325,6 +1473,7 @@ static void dispatch(struct broker *b, const struct sucrune_request *r, struct s
     out->magic = SUCRUNE_BROKER_MAGIC;
     out->size = 0;
     out->result = -ENOSYS;
+    b->walk_bind=bound_slot(b,r->args[0]);
     if (b->family->mount.stat && mount_fd_operation(b,r,out)) return;
     switch (r->operation) {
         case SUCRUNE_BROKER_PROC_CONTENTS: out->result=system_contents(b,r,out); break;
@@ -1398,7 +1547,7 @@ static void dispatch(struct broker *b, const struct sucrune_request *r, struct s
                     st.st_uid = state->image_uid;
                     st.st_gid = state->image_gid;
                     out->result = 0;
-                } else out->result = sucrune_links_stat(&b->links, &st);
+                } else out->result = sucrune_links_stat(walk_links(b), &st);
                 if (state->base_ino) {
                     st.st_ino = state->base_ino;
                     if (state->private_pin_plus_one) {
@@ -1559,7 +1708,7 @@ static void dispatch(struct broker *b, const struct sucrune_request *r, struct s
                     out->result = target < 0 ? target : chmod_pinned(target, (mode_t)r->args[1]);
                     if (target >= 0) close(target);
                 }
-            } else if ((out->result = write_access(b, file)) == 0)
+            } else if ((out->result = bind_metadata_access(b,file))==0 && (out->result = write_access(b, file)) == 0)
                 out->result = fchmod(file, (mode_t)r->args[1]) == 0 ? 0 : -errno;
             break;
         }
@@ -1589,7 +1738,7 @@ static void dispatch(struct broker *b, const struct sucrune_request *r, struct s
             else result = (ssize_t)syscall(SYS_getdents64, file, out->data, count);
             out->result = result < 0 ? -errno : result;
             if(result>0 && r->operation==61U) {
-                int validated=sucrune_links_dirents(&b->links,file,out->data,(size_t)result);
+                int validated=sucrune_links_dirents(walk_links(b),file,out->data,(size_t)result);
                 if(validated<0) {out->result=validated;break;}
             }
             if (result >= 0 && r->operation != 64U) out->size = (uint32_t)result;
@@ -1671,11 +1820,14 @@ static int setup_network(struct broker *b,int policy) {
     if(result==0 && b->profile!=SUCRUNE_WORKSPACE_BUNDLED) result=sucrune_network_attach_workspace(&b->network,b->root);
     return result;
 }
+#include "workspace_bind.inc"
+
 static void destroy_server(struct broker *b) {
     discard_bulk_read(b);
     discard_upload(b);
     sucrune_record_destroy(&b->record_locks);
     sucrune_links_destroy(&b->links);
+    sucrune_links_destroy(&b->bind_links);
     sucrune_network_destroy(&b->network);
     sucrune_pty_broker_destroy(&b->ptys);
     for(int i=3;i<FILE_SLOTS;i++) if(b->files[i]>=0 || b->rulesets[i]) (void)close_file(b,i);
@@ -1699,7 +1851,9 @@ static int fork_session(struct broker *parent,const struct sucrune_request *requ
     struct broker *child=calloc(1,sizeof(*child));
     if(child==NULL) {release_family(parent->family);return -ENOMEM;}
     child->family=parent->family;child->socket=-1;child->root=-1;child->completion=-1;child->cwd=-1;
-    child->links.parent=-1;child->links.store=-1;child->links.base=-1;
+    child->links.parent=child->links.store=child->links.base=-1;
+    child->bind_links.parent=child->bind_links.store=child->bind_links.base=-1;
+    child->cwd_bind=parent->cwd_bind;
     for(int i=0;i<FILE_SLOTS;i++) child->files[i]=-1;
     (void)sucrune_network_init(&child->network,SUCRUNE_NETWORK_NONE);
     child->network_handle=parent->network_handle;
@@ -1726,6 +1880,8 @@ static int fork_session(struct broker *parent,const struct sucrune_request *requ
     if(child->cwd<0) {result=-errno;goto failed;}
     if(parent->mount_cwd && !(child->mount_cwd=strdup(parent->mount_cwd))) {result=-ENOMEM;goto failed;}
     result=sucrune_links_clone(&child->links,&parent->links);
+    if (!result && child->family->bind_target) result=sucrune_links_clone(&child->bind_links,&parent->bind_links);
+    if (!result) result=order_namespace_locks(child);
     if(result<0) goto failed;
     child->completion=fcntl(parent->completion,F_DUPFD_CLOEXEC,3);
     if(child->completion<0) {result=-errno;goto failed;}
@@ -1777,13 +1933,14 @@ static void *serve(void *argument) {
             case 17:case 43:case 48:case 49:case 50:case 61:case 78:case 79:case 80:case 439:lock=LOCK_SH;break;
             default:break;
             }
-            if(lock && flock(b->links.parent,lock)!=0)
-                response=(struct sucrune_response){.magic=SUCRUNE_BROKER_MAGIC,.result=-errno};
+            int lock_error=lock ? lock_namespace(b,lock) : 0;
+            if(lock_error)
+                response=(struct sucrune_response){.magic=SUCRUNE_BROKER_MAGIC,.result=lock_error};
             else {
                 dispatch(b,&request,&response,&send_fd);
                 if (response.result==MOUNT_TARGET)
                     response.result=mount_path_operation(b,&request,&response,&send_fd);
-                if(lock) (void)flock(b->links.parent,LOCK_UN);
+                if(lock) unlock_namespace(b);
             }
         }
         int sent=sucrune_broker_send_response(b->socket, request.operation, &response, send_fd, 5000);
@@ -1798,9 +1955,12 @@ static void *serve(void *argument) {
 static int create_broker(const char *workspace, int *completion, int network_policy,
                                     uint64_t network_handle, enum sucrune_workspace_profile profile,
                                     enum sucrune_write_scope scope, struct sucrune_exec_image *image,
-                                    const struct sucrune_guest_directory *mount, bool *consumed) {
+                                    const struct sucrune_guest_directory *mount, bool *consumed,
+                                    const char *source_workspace,const char *source_subdir,const char *guest_target) {
     if (workspace == NULL || workspace[0] != '/' || completion == NULL) return -EINVAL;
     *completion = -1;
+    if ((source_workspace || source_subdir || guest_target) &&
+        (!source_workspace || !source_subdir || !guest_target || profile == SUCRUNE_WORKSPACE_BUNDLED)) return -EINVAL;
     if (scope != SUCRUNE_WRITE_UNRESTRICTED && scope != SUCRUNE_WRITE_READ_ONLY && scope != SUCRUNE_WRITE_PROJECT)
         return -EINVAL;
     if (profile != SUCRUNE_WORKSPACE_BUNDLED && profile != SUCRUNE_WORKSPACE_LINUX && profile != SUCRUNE_WORKSPACE_BUILD) return -EINVAL;
@@ -1823,7 +1983,8 @@ static int create_broker(const char *workspace, int *completion, int network_pol
     b->trusted_exec = image;
     sucrune_exec_image_retain(image);
     b->resource_limit = profile == SUCRUNE_WORKSPACE_BUNDLED ? SUCRUNE_DEFAULT_FILE_RESOURCES : SUCRUNE_FILE_RESOURCES;
-    b->links.parent=-1;b->links.store=-1;b->links.base=-1;
+    b->links.parent=b->links.store=b->links.base=-1;
+    b->bind_links.parent=b->bind_links.store=b->bind_links.base=-1;
     b->network_handle=network_handle;
     for (int i = 0; i < FILE_SLOTS; i++) b->files[i] = -1;
     b->cwd = fcntl(root,F_DUPFD_CLOEXEC,3);
@@ -1833,7 +1994,7 @@ static int create_broker(const char *workspace, int *completion, int network_pol
     if(b->family==NULL) error=-ENOMEM;
     else {
         atomic_init(&b->family->sessions,1U);
-        b->family->mount_anchor=-1;
+        b->family->mount_anchor=b->family->bind_root=b->family->bind_parent=-1;
         if (mount) {
             b->family->mount=*mount;
             *consumed=true;
@@ -1841,6 +2002,8 @@ static int create_broker(const char *workspace, int *completion, int network_pol
             if (b->family->mount_anchor<0 && !error) error=-errno;
         }
     }
+    if (!error && source_workspace) error=attach_bind(b,source_workspace,source_subdir,guest_target);
+    if (!error) error=order_namespace_locks(b);
     if(error==0) error=start_server(b);
     if(error!=0) {destroy_server(b);(void)close(pair[1]);(void)close(done[0]);return error;}
     *completion = done[0];
@@ -1850,8 +2013,16 @@ int sucrune_workspace_broker_mounted(const char *workspace,int *completion,int p
                                    uint64_t handle,enum sucrune_workspace_profile profile,
                                    enum sucrune_write_scope scope,struct sucrune_exec_image *image,
                                    const struct sucrune_guest_directory *mount) {
+    return sucrune_workspace_broker_bind(workspace,completion,policy,handle,profile,scope,image,mount,NULL,NULL,NULL);
+}
+int sucrune_workspace_broker_bind(const char *workspace,int *completion,int policy,
+                                 uint64_t handle,enum sucrune_workspace_profile profile,
+                                 enum sucrune_write_scope scope,struct sucrune_exec_image *image,
+                                 const struct sucrune_guest_directory *mount,const char *source_workspace,
+                                 const char *source_subdir,const char *guest_target) {
     bool consumed=false;
-    int rc=create_broker(workspace,completion,policy,handle,profile,scope,image,mount,&consumed);
+    int rc=create_broker(workspace,completion,policy,handle,profile,scope,image,mount,&consumed,
+                         source_workspace,source_subdir,guest_target);
     if (mount && !consumed && mount->destroy) mount->destroy(mount->context);
     return rc;
 }

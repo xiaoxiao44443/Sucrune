@@ -99,6 +99,7 @@ class RuntimeClient private constructor(private val context: Context) {
     /** Legacy low-level deletion rejects active executions. Apps use deleteProject for project removal. */
     fun deleteEnvironment(id: String): JSONObject = synchronized(sessionsLock) {
         requireProjectOpen(id)
+        requireNoDirectoryConsumers(id)
         core("env.delete", JSONObject().put("env_id", id)) as JSONObject
     }
 
@@ -112,6 +113,7 @@ class RuntimeClient private constructor(private val context: Context) {
         check(Looper.myLooper() != Looper.getMainLooper()) { "deleteProject cannot block the main looper" }
         val active = synchronized(sessionsLock) {
             requireProjectOpen(id)
+            requireNoDirectoryConsumers(id)
             deletingProjects.add(id)
             sessions.values.filter { it.envId == id }
         }
@@ -135,6 +137,12 @@ class RuntimeClient private constructor(private val context: Context) {
     /** sessionsLock must be held for the whole admission decision. */
     private fun requireProjectOpen(id: String) {
         if (id in deletingProjects) throw RuntimeExceptionWithCode("conflict", "Project deletion is in progress")
+    }
+
+    private fun requireNoDirectoryConsumers(id: String) {
+        if (sessions.values.any { it.directoryBind?.grant?.sourceEnvironmentId == id }) {
+            throw RuntimeExceptionWithCode("conflict", "Another execution is using this environment's shared directory")
+        }
     }
 
     fun writeFile(id: String, path: String, content: ByteArray): JSONObject = core("file.write",
@@ -254,7 +262,15 @@ class RuntimeClient private constructor(private val context: Context) {
     fun executePath(envId: String, path: String, argv: List<String> = emptyList(),
                     env: List<String> = emptyList(), cwd: String = "/", timeoutMs: Long? = null,
                     stdin: ByteArray = byteArrayOf(), secretEnv: Map<String, CharArray> = emptyMap(),
-                    resident: Boolean = false, trustedExecutable: TrustedExecutable? = null, workspaceDirectory: GuestDirectory?): String {
+                    resident: Boolean = false, trustedExecutable: TrustedExecutable? = null, workspaceDirectory: GuestDirectory?): String =
+        executePath(envId, path, argv, env, cwd, timeoutMs, stdin, secretEnv, resident, trustedExecutable, workspaceDirectory, null)
+
+    /** Additionally bind a local guest directory from a catalogued environment for this execution and its descendants. */
+    fun executePath(envId: String, path: String, argv: List<String> = emptyList(),
+                    env: List<String> = emptyList(), cwd: String = "/", timeoutMs: Long? = null,
+                    stdin: ByteArray = byteArrayOf(), secretEnv: Map<String, CharArray> = emptyMap(),
+                    resident: Boolean = false, trustedExecutable: TrustedExecutable? = null,
+                    workspaceDirectory: GuestDirectory? = null, directoryBind: GuestDirectoryBind?): String {
         validateLinuxPath(path)
         require(stdin.size <= 1_048_576) { "Standard input exceeds 1 MiB" }
         val arguments = argv.toList()
@@ -262,7 +278,8 @@ class RuntimeClient private constructor(private val context: Context) {
         val input = stdin.copyOf()
         validateProgramArguments(arguments, environment)
         return enqueue(envId, "linux", "", "", path, arguments, environment, cwd, timeoutMs, input,
-            secretEnv = secretEnv, resident = resident, trustedExecutable = trustedExecutable, workspaceDirectory = workspaceDirectory)
+            secretEnv = secretEnv, resident = resident, trustedExecutable = trustedExecutable,
+            workspaceDirectory = workspaceDirectory, directoryBind = directoryBind)
     }
 
     /** Keeps stdin open until closeInput, peer closure, cancellation or execution completion.
@@ -327,7 +344,8 @@ class RuntimeClient private constructor(private val context: Context) {
                         argv: List<String>, env: List<String>, cwd: String, timeoutMs: Long?, stdin: ByteArray,
                         interactive: Boolean = false, secretEnv: Map<String, CharArray> = emptyMap(),
                         stdoutReader: ExecutionStdout? = null, resident: Boolean = false,
-                        trustedExecutable: TrustedExecutable? = null, workspaceDirectory: GuestDirectory? = null): String {
+                        trustedExecutable: TrustedExecutable? = null, workspaceDirectory: GuestDirectory? = null,
+                        directoryBind: GuestDirectoryBind? = null): String {
         require('\u0000' !in cwd && cwd.startsWith('/') && cwd.toByteArray(Charsets.UTF_8).size < 1_024) {
             "cwd must be an absolute guest path shorter than 1024 UTF-8 bytes"
         }
@@ -372,6 +390,12 @@ class RuntimeClient private constructor(private val context: Context) {
             val execution: Execution
             synchronized(sessionsLock) {
                 requireProjectOpen(envId)
+                val bind = directoryBind?.let { grant ->
+                    require(grant.sourceEnvironmentId != envId) { "Directory bind must name another environment" }
+                    requireProjectOpen(grant.sourceEnvironmentId)
+                    val paths = core("env.paths", JSONObject().put("env_id", grant.sourceEnvironmentId)) as JSONObject
+                    ResolvedDirectoryBind(grant, paths.getString("workspace"))
+                }
                 val occupied = sessions.values.map { it.slot } + slot
                 if (executionSlotCount(occupied) > 4) {
                     throw RuntimeExceptionWithCode("conflict", "Four execution slots are already active")
@@ -379,7 +403,7 @@ class RuntimeClient private constructor(private val context: Context) {
                 val record = core("exec.create", JSONObject().put("env_id", envId).put("request",
                     request)) as JSONObject
                 execution = Execution(record.getString("execution_id"), envId, kind, script, programId, path, argv, env, cwd, duration,
-                    if (interactive) ExecutionInput.interactive() else ExecutionInput.finite(stdin), networkPolicy, networkHandle, slot, secrets, stdoutReader, trustedExecutable, workspaceDirectory)
+                    if (interactive) ExecutionInput.interactive() else ExecutionInput.finite(stdin), networkPolicy, networkHandle, slot, secrets, stdoutReader, trustedExecutable, workspaceDirectory, bind)
                 sessions[execution.id] = execution
             }
             main.post {
@@ -478,6 +502,13 @@ class RuntimeClient private constructor(private val context: Context) {
             val workspace = paths.getString("workspace")
             val fds = when {
                 execution.kind != "linux" -> NativeProbe.openWorkspace(workspace)
+                execution.directoryBind != null -> {
+                    val bind = execution.directoryBind
+                    NativeProbe.openWorkspaceWithBind(workspace, execution.networkPolicy, execution.networkHandle,
+                        "SUCRUNE_FD_PROFILE=build" in execution.env, execution.slot.writeScope,
+                        execution.trustedExecutable?.guestPath, execution.trustedExecutable?.bytes, execution.workspaceDirectory,
+                        bind.sourceWorkspace, bind.grant.sourcePath.drop(1), bind.grant.targetPath)
+                }
                 execution.workspaceDirectory != null -> NativeProbe.openWorkspaceWithDirectory(workspace, execution.networkPolicy,
                     execution.networkHandle, "SUCRUNE_FD_PROFILE=build" in execution.env, execution.slot.writeScope,
                     execution.trustedExecutable?.guestPath, execution.trustedExecutable?.bytes, execution.workspaceDirectory)
@@ -923,11 +954,14 @@ class RuntimeClient private constructor(private val context: Context) {
         execution.deathRecipient = null
     }
 
+    private data class ResolvedDirectoryBind(val grant: GuestDirectoryBind, val sourceWorkspace: String)
+
     private inner class Execution(val id: String, val envId: String, val kind: String, val script: String,
                                   val programId: String, val path: String, val argv: List<String>, val env: List<String>,
                                   val cwd: String, timeoutMs: Long?, val input: ExecutionInput, val networkPolicy: Int,
                                   val networkHandle: Long, val slot: ExecutionSlot, val secrets: ExecutionSecrets?, val stdoutReader: ExecutionStdout?,
-                                  val trustedExecutable: TrustedExecutable?, val workspaceDirectory: GuestDirectory?) {
+                                  val trustedExecutable: TrustedExecutable?, val workspaceDirectory: GuestDirectory?,
+                                  val directoryBind: ResolvedDirectoryBind?) {
         val expiresAt: Long? = timeoutMs?.let { SystemClock.elapsedRealtime() + it }
         val stdout = Capture()
         val stderr = Capture()

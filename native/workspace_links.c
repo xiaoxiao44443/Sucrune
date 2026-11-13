@@ -192,8 +192,10 @@ static int sync_directory(int path_fd) {
     if(fd<0) return -errno;
     int rc=fsync(fd)==0 ? 0 : -errno; close(fd);return rc;
 }
-int sucrune_links_tmp_write(struct sucrune_workspace_links *l,int root,const struct stat *st,int native) {
-    if (native) return sucrune_links_all_in_tmp(root,st,NULL,st->st_nlink);
+int sucrune_links_check_scope(struct sucrune_workspace_links *l,int root,const struct stat *st,int native,int exported) {
+    int (*check)(int,const struct stat *,const char *,uint64_t)=
+        exported ? sucrune_links_all_beneath : sucrune_links_all_in_tmp;
+    if (native) return check(root,st,NULL,st->st_nlink);
     if (store(l,0)<0) return -EACCES;
     struct object o;
     identity(st,o.id);names(&o);
@@ -201,7 +203,10 @@ int sucrune_links_tmp_write(struct sucrune_workspace_links *l,int root,const str
     if (fstatat(l->store,o.id,&body,AT_SYMLINK_NOFOLLOW)!=0 ||
         body.st_dev!=st->st_dev || body.st_ino!=st->st_ino) return -EACCES;
     int rc=checked(l,&o);
-    return rc<0 ? rc : sucrune_links_all_in_tmp(root,st,o.id,o.count);
+    return rc<0 ? rc : check(root,st,o.id,o.count);
+}
+int sucrune_links_tmp_write(struct sucrune_workspace_links *l,int root,const struct stat *st,int native) {
+    return sucrune_links_check_scope(l,root,st,native,0);
 }
 int sucrune_links_publish(struct sucrune_workspace_links *l,int source,const char *name,int pinned,int dest,const char *newname) {
     struct stat st,existing;

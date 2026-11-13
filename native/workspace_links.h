@@ -15,6 +15,7 @@ int sucrune_base_promote(struct sucrune_workspace_links *,int parent,const char 
 int sucrune_links_target_info(struct sucrune_workspace_links *,int owned_path_fd,ino_t *base_ino);
 int sucrune_links_target(struct sucrune_workspace_links *,int owned_path_fd);
 int sucrune_links_stat(struct sucrune_workspace_links *,struct stat *);
+int sucrune_links_check_scope(struct sucrune_workspace_links *,int root,const struct stat *,int native,int exported);
 int sucrune_links_tmp_write(struct sucrune_workspace_links *,int root,const struct stat *,int native);
 int sucrune_links_publish(struct sucrune_workspace_links *,int oldparent,const char *oldname,int pinned,
                           int newparent,const char *newname);

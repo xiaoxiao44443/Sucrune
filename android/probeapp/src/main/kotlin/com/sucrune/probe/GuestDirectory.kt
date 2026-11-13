@@ -16,3 +16,17 @@ interface GuestDirectory {
     fun remove(path: String, directory: Boolean)
     fun rename(source: String, target: String, flags: Int)
 }
+
+/** An embedding-app grant to expose a directory from one Sucrune environment at a guest path.
+ * Both paths are canonical absolute guest paths. The manager resolves the environment's
+ * storage root from its catalog; guest environment variables cannot request a bind. */
+data class GuestDirectoryBind(val sourceEnvironmentId: String, val sourcePath: String, val targetPath: String) {
+    init {
+        for (path in listOf(sourcePath, targetPath)) {
+            require(path.startsWith('/') && '\u0000' !in path && path.toByteArray(Charsets.UTF_8).size < 1024 &&
+                path.drop(1).split('/').none { it.isEmpty() || it == "." || it == ".." }) {
+                "Directory bind paths must be canonical, absolute and below the guest root"
+            }
+        }
+    }
+}

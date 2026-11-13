@@ -25,6 +25,9 @@ struct ll_domain {
     struct ll_layer *layers[LL_MAX_LAYERS];
     unsigned int count;
     bool no_new_privs;
+    /* Borrowed from the broker family. Splice a trusted POSIX export into
+     * its virtual guest hierarchy while computing PATH_BENEATH rights. */
+    int bind_root_plus_one, bind_parent_plus_one;
 };
 int ll_create(uint64_t handled, struct ll_ruleset **out);
 void ll_hold(struct ll_ruleset *set);

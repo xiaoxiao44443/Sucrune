@@ -32,6 +32,9 @@ internal object NativeProbe {
     @JvmStatic external fun checkDocumentOpenMode(fd: Int, access: Int, append: Boolean): Int
     @JvmStatic external fun openWorkspaceWithDirectory(path: String, networkPolicy: Int, networkHandle: Long,
         build: Boolean, scope: Int, guestPath: String?, image: ByteArray?, directory: GuestDirectory): IntArray
+    @JvmStatic external fun openWorkspaceWithBind(path: String, networkPolicy: Int, networkHandle: Long,
+        build: Boolean, scope: Int, guestPath: String?, image: ByteArray?, directory: GuestDirectory?,
+        sourceWorkspace: String, sourceSubdirectory: String, guestTarget: String): IntArray
     @JvmStatic external fun openBuildWorkspace(path: String, policy: Int, networkHandle: Long): IntArray
     @JvmStatic external fun openWorkspaceOnNetwork(path: String, policy: Int, networkHandle: Long): IntArray
     @JvmStatic external fun runShell(brokerFd: Int, script: String, cwd: String,
