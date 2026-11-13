@@ -3019,12 +3019,16 @@ static int prepare_stack(struct shell_state *s, size_t argc, const char *const *
     if (text_size + vector_size + 15U > cursor - s->stack_low) { errno = E2BIG; return -1; }
     s->stack_pointer = (cursor - text_size - vector_size) & ~(uintptr_t)15U;
     uint64_t *words = (uint64_t *)s->stack_pointer;
-    *words++ = argc;
-    for (size_t i=0; i<argc; i++) *words++ = push_string(&cursor, argv[i]);
-    *words++ = 0;
-    for (size_t i=0; i<envc; i++) *words++ = push_string(&cursor, envp[i]);
-    *words++ = 0;
-    memcpy(words, auxiliary, sizeof(auxiliary));
+    uint64_t *args = words + 1;
+    uint64_t *environment = args + argc + 1;
+    words[0] = argc;
+    args[argc] = 0;
+    environment[envc] = 0;
+    memcpy(environment + envc + 1, auxiliary, sizeof(auxiliary));
+    /* Linux stores the actual strings in ascending argv order, then envp.
+     * libuv uses this contiguous argv span to update the process title. */
+    for (size_t i = envc; i > 0; --i) environment[i - 1] = push_string(&cursor, envp[i - 1]);
+    for (size_t i = argc; i > 0; --i) args[i - 1] = push_string(&cursor, argv[i - 1]);
     return 0;
 }
 static void problem(struct shell_state *s, const char *stage, const char *message, int error) {

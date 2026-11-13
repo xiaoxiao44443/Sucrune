@@ -31,6 +31,7 @@ internal class LinuxChecks(private val instrumentation: Instrumentation,
     private var total = 14
     private var focused = false
     private var toolOnly = false
+    private val processTitleOnly = arguments.getString("focus") == "process_title"
     private var transientCredential: CharArray? = null
     private val realAgentSuite get() = arguments.getString("real_agent") == "true"
     private val env = listOf("LC_ALL=C.UTF-8", "LANG=C.UTF-8", "LD_LIBRARY_PATH=/lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu")
@@ -82,7 +83,7 @@ internal class LinuxChecks(private val instrumentation: Instrumentation,
             check(!nativeRequirements || sdk) { "Native DSH requirements need -e sdk true" }
             check(!secrets || node) { "Secret environment checks require -e node true" }
             check(!dns || node) { "DNS and HTTPS checks require -e node true" }
-            if (node) { check(manifest.getBoolean("includes_node")); total += 14 }
+            if (node) { check(manifest.getBoolean("includes_node")); total += 15 }
             if (dsh) total += 4
             if (sdk) total += 4
             if (network) total += 5
@@ -228,6 +229,10 @@ internal class LinuxChecks(private val instrumentation: Instrumentation,
                 }
             } else emptyList()
             if (toolbox || compiler) total = 2 + layers.size + toolboxSteps.size
+            if (processTitleOnly) {
+                require(node) { "Process title checks require -e node true" }
+                total = 2
+            }
             case("linux_import_upstream") {
                 val files = manifest.getJSONArray("files")
                 for (index in 0 until files.length()) {
@@ -447,6 +452,21 @@ internal class LinuxChecks(private val instrumentation: Instrumentation,
                     check(record.getString("stdout") == "{\"value\":42,\"platform\":\"linux\",\"arch\":\"arm64\"}\n") { record.toString() }
                     check(record.getJSONObject("result").getJSONObject("native").getString("memory_policy") == "linux-jit")
                     "Real Node/V8 JavaScript evaluated under Linux ARM64 ABI with the explicit linux-jit memory policy"
+                }
+                case("linux_node_process_title") {
+                    val source = """
+                        const assert = require('node:assert/strict');
+                        const before = process.argv.slice();
+                        process.title = 'npm';
+                        assert.equal(process.title, 'npm');
+                        assert.deepEqual(process.argv, before);
+                        assert.equal(process.env.SUCRUNE_TITLE_TEST, 'preserved');
+                        console.log('title-ok');
+                    """.trimIndent()
+                    val record = completed(start(a, "/usr/bin/node", listOf("-e", source, "arg"), jit = true,
+                        extraEnv = listOf("SUCRUNE_TITLE_TEST=preserved")))
+                    check(record.getString("stdout") == "title-ok\n") { record.toString() }
+                    "Node's libuv process-title update preserves JavaScript argv and environment"
                 }
                 case("linux_node_jitless") {
                     val record = completed(start(a, "/usr/bin/node", listOf("--jitless", "-e", "console.log(6*7)")))
@@ -800,6 +820,7 @@ internal class LinuxChecks(private val instrumentation: Instrumentation,
         check(native.getInt("runner_parent_pid") == parent && native.getInt("uid") == worker.getInt("uid")) { record.toString() }
     }
     private fun case(name: String, body: () -> String) {
+        if (processTitleOnly && name != "linux_import_upstream" && name != "linux_node_process_title") return
         if (toolOnly && name !in setOf("linux_dsh_profile_prepare", "linux_dsh_profile_install_bundle", "linux_dsh_persistent_bash_tool")) return
         if (focused && name !in setOf("linux_import_upstream", "linux_gnu_bash_builtins", "linux_fork_cancel_session_lease",
                 "linux_guest_pselect6_mask_and_readiness", "linux_node_spawn_debian_hello_with_pipes", "linux_node_spawn_bash_with_connected_tcp") &&

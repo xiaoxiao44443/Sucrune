@@ -28,6 +28,19 @@ static int failure(const char *step) {
     return 1;
 }
 
+static int contiguous_process_strings(int argc, char **argv) {
+    const char *next = argv[0];
+    for (int i = 0; i < argc; i++) {
+        if (argv[i] != next) return 0;
+        next = argv[i] + strlen(argv[i]) + 1;
+    }
+    for (size_t i = 0; environ[i] != NULL; i++) {
+        if (environ[i] != next) return 0;
+        next = environ[i] + strlen(environ[i]) + 1;
+    }
+    return 1;
+}
+
 static int descriptor_flags_roundtrip(int descriptor) {
     int original = fcntl(descriptor, F_GETFD);
     if (original < 0) { fprintf(stderr, "musl:fd-flags fd=%d get=%d errno=%d\n", descriptor, original, errno); return -1; }
@@ -48,6 +61,7 @@ static int descriptor_flags_roundtrip(int descriptor) {
 }
 
 static int selftest(int argc, char **argv) {
+    if (!contiguous_process_strings(argc, argv)) return failure("initial-argv-env-layout");
     const char *value = getenv("SUCRUNE_TEST");
     printf("musl:argv=%s\n", argc > 2 ? argv[2] : "");
     printf("musl:env=%s\n", value != NULL ? value : "");
@@ -196,6 +210,7 @@ static int exec_state(int argc, char **argv) {
         return failure("exec-state-returned");
     }
     if (strcmp(argv[1], "--exec-state-post") != 0 || argc != 7) return failure("exec-state-post-arguments");
+    if (!contiguous_process_strings(argc, argv)) return failure("exec-argv-env-layout");
     const char *exec_path = (const char *)getauxval(AT_EXECFN);
     uint64_t signal_mask = 0;
     if (exec_path == NULL || strcmp(exec_path, "/bin/musl-smoke") != 0 || strcmp(argv[0], "exec-state-custom-argv0") != 0)
